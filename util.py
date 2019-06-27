@@ -1,0 +1,208 @@
+import os
+import sys
+import pandas as pd
+from sklearn.model_selection import KFold
+
+try:
+    # In case we're in the tensorflow environment
+    import lightgbm as lgb
+except:
+    pass
+
+from DataScience.statsmltools.alt_metrics import *
+from time import time
+
+
+def blockPrinting(func):
+    def func_wrapper(*args, **kwargs):
+        # block all printing to the console
+        with open(os.devnull, "w") as devNull:
+            original = sys.stdout
+            sys.stdout = devNull    # suppress printing
+            func(*args, **kwargs)
+            sys.stdout = original   # re-enable printing
+
+    return func_wrapper
+
+
+def depth(d, level=1):
+    '''
+    Get the depth of a dictionary
+    :param d: The dictionary
+    '''
+    if not isinstance(d, dict) or not d:
+        return level
+    return max(depth(d[k], level + 1) for k in d)
+
+
+def flatten_list(l):
+    return [item for sublist in l for item in sublist]
+
+
+def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklprotocol=-1, maxrows=np.inf):
+
+    fullmem = sum(df.memory_usage())
+
+    print('**Total Memory Usage (in bytes): ', fullmem)
+
+    if df.shape[0] > maxrows:
+        n_batches = int(np.ceil(df.shape[0] / maxrows))
+
+    elif fullmem < int(maxsize - maxsize * 0.1) or df.shape[0] < maxrows:
+        n_batches = 1
+
+    else:
+        n_batches = fullmem // int(maxsize - maxsize * 0.1)
+
+    batch_size = df.shape[axis] // n_batches
+
+    print(f'This will require {n_batches} files.')
+
+    if len([f for f in os.listdir(savedir) if f[0] != '.']) > 0:
+        print('There are already items saved here ... delete them, or move them, and then run this again.')
+        return None
+
+    if by_group is not None:
+        for i, group in enumerate(df[by_group].unique()):
+            print(f'Saving data from {by_group} {group} ({i+1} of {len(df[by_group].nunique)}) to {savedir} ...')
+            df[df[by_group] == group].to_pickle(f'{savedir}/{group}.pkl')
+
+        return None
+
+    print('Dumping files ...')
+    for i in range(n_batches):
+        if i == n_batches - 1:
+            if axis == 0:
+                pd.to_pickle(df[i * batch_size:], f'{savedir}/{dfname}_byrows_{i + 1}.pkl', protocol=pklprotocol)
+            elif axis == 1:
+                pd.to_pickle(df.iloc[:, i * batch_size:], f'{savedir}/{dfname}_bycols_{i + 1}.pkl', protocol=pklprotocol)
+
+        else:
+            if axis == 0:
+                pd.to_pickle(df[i * batch_size: (i + 1) * batch_size], f'{savedir}/{dfname}_byrows_{i + 1}.pkl', protocol=pklprotocol)
+            elif axis == 1:
+                pd.to_pickle(df.iloc[:, i * batch_size: (i + 1) * batch_size], f'{savedir}/{dfname}_bycols_{i + 1}.pkl', protocol=pklprotocol)
+
+        print(f'Pickled {i + 1} of {n_batches} batch files for data {dfname}.')
+
+    print('Done!')
+
+
+def df_load(savedir, keep_filename=False, len_prefix=None, len_suffix=4, featurecol_name='filename', axis=0,
+            reset_index=True, csv_params=None):
+
+    if csv_params is None:
+        csv_params = {}
+
+    dirsize = len([f for f in os.listdir(savedir) if f[0] != '.'])
+
+    if dirsize == 0:
+        print("There's nothing in here ...")
+        return None
+
+    files = sorted([f for f in os.listdir(savedir) if f[0] != '.'])
+    if 'bycols' in files[0]:
+        axis = 1
+
+    try:
+        df = pd.read_pickle(savedir + '/' + files[0])
+
+    except:
+        if files[0][files[0].rfind('.')+1:] in ['gzip', 'bz2', 'zip', 'xz']:
+            comp = files[0][files[0].rfind('.')+1:]
+        else:
+            comp = 'infer'
+
+        params = {'filepath_or_buffer': savedir + '/' + files[0],
+                  'compression': comp}
+
+        params = {**params, **csv_params}
+
+        df = pd.read_csv(**params)
+
+    if keep_filename:
+        df[featurecol_name] = files[0][len_prefix:len(files[0])-len_suffix]
+
+    print(f'Loaded file 1 of {dirsize}.')
+
+    for i, file in enumerate(files[1:]):
+        try:
+            df_ = pd.read_pickle(savedir + '/' + file)
+
+        except:
+            if file[file.rfind('.')+1:] in ['gzip', 'bz2', 'zip', 'xz']:
+                comp = file[file.rfind('.')+1:]
+            else:
+                comp = 'infer'
+
+            params = {'filepath_or_buffer': savedir + '/' + file,
+                      'compression': comp}
+
+            params = {**params, **csv_params}
+
+            df_ = pd.read_csv(**params)
+
+        if keep_filename:
+            df_[featurecol_name] = file[len_prefix:len(file)-len_suffix]
+
+        df = pd.concat((df, df_), axis=axis, sort=True)
+
+        print(f'Loaded file {i + 2} of {dirsize}.')
+
+    if reset_index:
+        df.reset_index(inplace=True, drop=True)
+
+    return df
+
+
+def df_join_array(df, array, column_names):
+
+    df = pd.concat([df, pd.DataFrame(columns=column_names)], sort=True)
+    df.loc[:, column_names] = array
+
+    return df
+
+
+def define_bins(values, bins=(0, 2, 5, 10, 50, 100, 500, 2000)):
+    '''
+    ...
+    **NOTE: An older version of this method exists in DataScience.sales_ensemble.scriptlib.util. UPDATE THE OLDER IF NECESSARY.**
+    ...
+    You can use something like
+        sales.ensembledata['SalesCountsSection'] = define_category(sales.ensembledata.SalesActualCount30.values)
+        sales.plot_report_by_col('SalesCountsSection', ['SalesEstimate30', 'Class2Reg_Poisson', 'Class2Reg_LM'],
+                                 ['MAAPE', 'sMAPE'], 'count', 'index')
+    :param values:
+    :param bins:
+    :return:
+    '''
+    bins = np.array(bins)
+    bins_values = np.array([bins] * len(values))
+    values_bins = np.array([values] * len(bins)).T
+    mask = values_bins >= bins_values
+    bin_index = np.sum(mask, axis=1) - 1
+    bins_defined = bins[bin_index]
+
+    return bins_defined
+
+
+def timeit(method):
+    def timed(*args, **kw):
+        ts = time()
+        result = method(*args, **kw)
+        te = time()
+        if 'log_time' in kw:
+            name = kw.get('log_name', method.__name__.upper())
+            kw['log_time'][name] = int((te - ts) * 1000)
+        else:
+            print('%r  %2.2f ms'.format(method.__name__, (te - ts) * 1000))
+        return result
+    return timed
+
+
+def get_array_batches(a, max_batch_size=4):
+    a = np.array(a)
+    cv = KFold(n_splits=len(a) // (max_batch_size - 1))
+
+    return [list(a[x[1]]) for x in cv.split(a)]
+
