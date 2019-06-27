@@ -3,8 +3,8 @@ import seaborn as sns
 import pandas as pd
 import os
 import lightgbm as lgb
-from statsmltools.alt_metrics import *
-from statsmltools.stattools import StatsmodelSKLearn
+from ._alt_metrics import *
+from ._stattools import StatsmodelSKLearn
 from sklearn.preprocessing import minmax_scale
 from sklearn.model_selection import GridSearchCV, TimeSeriesSplit
 from sklearn.metrics import make_scorer, r2_score, mean_absolute_error, median_absolute_error, \

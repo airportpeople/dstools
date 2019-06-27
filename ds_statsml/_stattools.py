@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
+import statsmodels.api as sm
 from sklearn.base import BaseEstimator, TransformerMixin, RegressorMixin
 from sklearn.preprocessing import Imputer
 from statsmodels.stats.outliers_influence import variance_inflation_factor
-import statsmodels.api as sm
 
 
 class StatsmodelSKLearn(BaseEstimator, RegressorMixin):

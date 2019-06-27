@@ -1,12 +1,12 @@
-from sklearn.metrics import silhouette_samples, silhouette_score, f1_score
-from sklearn.model_selection import learning_curve, KFold, ParameterGrid
-from sklearn.preprocessing import scale
-from sklearn.cluster import *
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib.cm as cm
+from sklearn.metrics import silhouette_samples, silhouette_score, f1_score
+from sklearn.model_selection import learning_curve, KFold, ParameterGrid
+from sklearn.preprocessing import scale
+from sklearn.cluster import *
 from sklearn.decomposition import PCA
 from IPython.display import clear_output
 

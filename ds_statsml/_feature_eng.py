@@ -1,13 +1,13 @@
-from statsmltools.timeseriestools import get_fourier, get_consecutive
-from statsmltools.util import define_bins
+import numpy as np
+import pandas as pd
+import re
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.validation import check_is_fitted
 from pandas.tseries.holiday import USFederalHolidayCalendar, Holiday, SU, MO, TU, WE, TH, FR, SA
 from pandas.tseries.offsets import DateOffset
 from sklearn.utils import column_or_1d
-import numpy as np
-import pandas as pd
-import re
+from ._timeseriestools import get_fourier, get_consecutive
+from ..util import define_bins
 
 
 def get_timeseries_features(df_all, timeseriescols, timeseriescols_diffs=None,

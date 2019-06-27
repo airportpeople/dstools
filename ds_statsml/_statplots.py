@@ -9,7 +9,7 @@ from sklearn.metrics import confusion_matrix, auc, roc_curve, r2_score, mean_abs
     average_precision_score, f1_score, accuracy_score
 from scipy import interp
 from itertools import cycle
-from DataScience.statsmltools.alt_metrics import *
+from ._alt_metrics import *
 
 
 def abline(slope, intercept, color, axis=None):

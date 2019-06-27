@@ -1,3 +1,14 @@
+import sys
+import os
+
+sys.path.append("/Users/leonjohnson/GitStuff")
+sys.path.append("/Users/leonjohnson/GitStuff/DataScience/")
+sys.path.append("/Users/leonjohnson/GitStuff/dstools/")
+for mod in [x for x in os.listdir('.') if '.' not in x]:
+    sys.path.append(f'./{mod}')
+
+# Still need to add:
+
 '''
 Make this a Python package for iPython.
 

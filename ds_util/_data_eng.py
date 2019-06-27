@@ -1,42 +1,6 @@
 import os
-import sys
 import pandas as pd
-from sklearn.model_selection import KFold
-
-try:
-    # In case we're in the tensorflow environment
-    import lightgbm as lgb
-except:
-    pass
-
-from DataScience.statsmltools.alt_metrics import *
-from time import time
-
-
-def blockPrinting(func):
-    def func_wrapper(*args, **kwargs):
-        # block all printing to the console
-        with open(os.devnull, "w") as devNull:
-            original = sys.stdout
-            sys.stdout = devNull    # suppress printing
-            func(*args, **kwargs)
-            sys.stdout = original   # re-enable printing
-
-    return func_wrapper
-
-
-def depth(d, level=1):
-    '''
-    Get the depth of a dictionary
-    :param d: The dictionary
-    '''
-    if not isinstance(d, dict) or not d:
-        return level
-    return max(depth(d[k], level + 1) for k in d)
-
-
-def flatten_list(l):
-    return [item for sublist in l for item in sublist]
+import numpy as np
 
 
 def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklprotocol=-1, maxrows=np.inf):
@@ -186,23 +150,58 @@ def define_bins(values, bins=(0, 2, 5, 10, 50, 100, 500, 2000)):
     return bins_defined
 
 
-def timeit(method):
-    def timed(*args, **kw):
-        ts = time()
-        result = method(*args, **kw)
-        te = time()
-        if 'log_time' in kw:
-            name = kw.get('log_name', method.__name__.upper())
-            kw['log_time'][name] = int((te - ts) * 1000)
-        else:
-            print('%r  %2.2f ms'.format(method.__name__, (te - ts) * 1000))
-        return result
-    return timed
+def clean_json(raw_, prev_key='', idx_separator='__'):
+    '''
+    Clean up a raw json so that json2table outputs a palatable set of tables for Pandas to turn to dataframes.
 
+    Parameters
+    ----------
+    raw_ : dict or json
+        The raw json you want to have cleaned up.
 
-def get_array_batches(a, max_batch_size=4):
-    a = np.array(a)
-    cv = KFold(n_splits=len(a) // (max_batch_size - 1))
+    prev_key : str, DON'T CHANGE
+        This is for the recursion of the function.
 
-    return [list(a[x[1]]) for x in cv.split(a)]
+    idx_separator : str, optional
+        In recursion, the function will separate dictionary/json keys. Pick a value that will not show up in any of these strings.
 
+    Returns
+    -------
+    clean : dict
+        A clean json!
+
+    '''
+    global table_names
+    global num_subtables
+
+    for k in raw_.keys():
+        if isinstance(raw_[k], dict):
+            # Instead of reading a dictionary as it's own values, read it as a sub-json (in a list)
+            # This allows json2table to convert it correctly into its own sub-table
+            raw_[k] = [clean_json(raw_[k], prev_key=k, idx_separator=idx_separator)]
+            table_names.append(prev_key + k)
+            num_subtables.append(1)
+
+        elif isinstance(raw_[k], list) and len(raw_[k]) > 0 and not isinstance(raw_[k][0], dict):
+            # If the value is a list of non-dictionaries, json2table wants to turn to a string.
+            # Take the list out from sublevel, and add new keys to the 'super' dictionary pointing to the values by index
+            sub2super = {}
+            for i in range(len(raw_[k])):
+                sub2super[str(k) + idx_separator + str(i)] = raw_[k][i]
+
+            # Sometimes, this will be part of a sub-dictionary, otherwise, it's the main raw_ json
+            try:
+                raw_[prev_key] = {**raw_[prev_key], **sub2super}
+            except KeyError:
+                raw_ = {**raw_, **sub2super}
+
+            # Once we pull the values out of key `k`, we don't need that anymore
+            _ = raw_.pop(k)
+
+        elif isinstance(raw_[k], list) and len(raw_[k]) > 0 and isinstance(raw_[k][0], dict):
+            # If the value is a list of dictionaries, don't do anything (because this is the format json2table likes)
+            # and add table names and counts
+            table_names.append(prev_key + k)
+            num_subtables.append(len(raw_[k]))
+
+    return raw_
