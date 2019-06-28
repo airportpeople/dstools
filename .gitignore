@@ -1,10 +1,8 @@
-/.DS_Store
-*.DS_Store
+.DS_Store
 *.zip
 *.csv
 *.pkl
 *.txt
-*.DS_Store
 *.pyc
 *.ipynb_checkpoints
 *.RData
@@ -15,5 +13,7 @@
 *.html
 *.iml
 .idea
+/__pycache__
+__pycache__
 data
 tblogs
