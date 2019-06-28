@@ -13,6 +13,7 @@
 *.png
 *.jpeg
 *.html
+*.iml
 .idea
 data
 tblogs
