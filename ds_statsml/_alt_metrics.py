@@ -3,19 +3,19 @@ from sklearn.metrics import mean_squared_error
 
 
 def APE(actual, forecast):
-    return np.abs((actual - forecast) / (actual + 1e-15))
+    return np.abs((actual - forecast) / (actual))
 
 
 def APE_inv(actual, forecast):
-    return np.abs(actual / (actual - forecast + 1e-15))
+    return np.abs(actual / (actual - forecast))
 
 
 def sAPE(actual, forecast):
-    return np.abs(actual - forecast) / ((actual + forecast) / 2 + 1e-15)
+    return np.abs(actual - forecast) / ((actual + forecast) / 2)
 
 
 def sAPE2(actual, forecast):
-    return np.abs((actual - forecast) * ((actual + forecast) / 2 + 1e-15) ** 0.5)
+    return np.abs((actual - forecast) * ((actual + forecast) / 2) ** 0.5)
 
 
 def AAPE(actual, forecast):
