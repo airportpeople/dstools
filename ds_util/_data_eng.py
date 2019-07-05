@@ -29,15 +29,13 @@ def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklp
 
     batch_size = df.shape[axis] // n_batches
 
-    print(f'This will require {n_batches} files.')
-
     if len([f for f in os.listdir(savedir) if f[0] != '.']) > 0:
         print('There are already items saved here ... delete them, or move them, and then run this again.')
         return None
 
     if by_group is not None:
         for i, group in enumerate(df[by_group].unique()):
-            print(f'Saving data from {by_group} {group} ({i+1} of {len(df[by_group].nunique)}) to {savedir} ...')
+            print(f'({i+1} of {len(df[by_group].nunique())}) Saving data from {by_group} {group} to {savedir} ...')
             save(df[df[by_group] == group], f'{savedir}/{group}')
 
         return None
@@ -56,7 +54,7 @@ def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklp
             elif axis == 1:
                 save(df.iloc[:, i * batch_size: (i + 1) * batch_size], f'{savedir}/{dfname}_bycols_{i + 1}')
 
-        print(f'Saved {i + 1} of {n_batches} batch files for data {dfname}.')
+        print(f'({i + 1} of {n_batches}) Saved data for {dfname}.')
 
     print('Done!')
 
