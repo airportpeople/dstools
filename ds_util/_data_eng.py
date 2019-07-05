@@ -3,7 +3,16 @@ import pandas as pd
 import numpy as np
 
 
-def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklprotocol=-1, maxrows=np.inf):
+def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklprotocol=-1, maxrows=np.inf, csv_params=None, csv=False):
+
+    def save(df_, filename):
+        if csv:
+            params = csv_params if csv_params is not None else {}
+            params['path_or_buf'] = filename + '.csv'
+            df_.to_csv(**params)
+
+        else:
+            pd.to_pickle(df_, filename + '.pkl', protocol=pklprotocol)
 
     fullmem = sum(df.memory_usage())
 
@@ -29,7 +38,7 @@ def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklp
     if by_group is not None:
         for i, group in enumerate(df[by_group].unique()):
             print(f'Saving data from {by_group} {group} ({i+1} of {len(df[by_group].nunique)}) to {savedir} ...')
-            df[df[by_group] == group].to_pickle(f'{savedir}/{group}.pkl')
+            save(df[df[by_group] == group], f'{savedir}/{group}')
 
         return None
 
@@ -37,17 +46,17 @@ def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklp
     for i in range(n_batches):
         if i == n_batches - 1:
             if axis == 0:
-                pd.to_pickle(df[i * batch_size:], f'{savedir}/{dfname}_byrows_{i + 1}.pkl', protocol=pklprotocol)
+                save(df[i * batch_size:], f'{savedir}/{dfname}_byrows_{i + 1}')
             elif axis == 1:
-                pd.to_pickle(df.iloc[:, i * batch_size:], f'{savedir}/{dfname}_bycols_{i + 1}.pkl', protocol=pklprotocol)
+                save(df.iloc[:, i * batch_size:], f'{savedir}/{dfname}_bycols_{i + 1}')
 
         else:
             if axis == 0:
-                pd.to_pickle(df[i * batch_size: (i + 1) * batch_size], f'{savedir}/{dfname}_byrows_{i + 1}.pkl', protocol=pklprotocol)
+                save(df[i * batch_size: (i + 1) * batch_size], f'{savedir}/{dfname}_byrows_{i + 1}')
             elif axis == 1:
-                pd.to_pickle(df.iloc[:, i * batch_size: (i + 1) * batch_size], f'{savedir}/{dfname}_bycols_{i + 1}.pkl', protocol=pklprotocol)
+                save(df.iloc[:, i * batch_size: (i + 1) * batch_size], f'{savedir}/{dfname}_bycols_{i + 1}')
 
-        print(f'Pickled {i + 1} of {n_batches} batch files for data {dfname}.')
+        print(f'Saved {i + 1} of {n_batches} batch files for data {dfname}.')
 
     print('Done!')
 
