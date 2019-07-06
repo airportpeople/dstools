@@ -35,7 +35,7 @@ def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklp
 
     if by_group is not None:
         for i, group in enumerate(df[by_group].unique()):
-            print(f'({i+1} of {len(df[by_group].nunique())}) Saving data from {by_group} {group} to {savedir} ...')
+            print(f'({i+1} of {df[by_group].nunique()}) Saving data from {by_group} {group} to {savedir} ...')
             save(df[df[by_group] == group], f'{savedir}/{group}')
 
         return None
