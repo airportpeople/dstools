@@ -8,6 +8,7 @@ from pandas.tseries.offsets import DateOffset
 from sklearn.utils import column_or_1d
 from ._timeseriestools import get_fourier, get_consecutive
 from dstools.ds_util import define_bins
+from multiprocessing import current_process
 
 
 def get_timeseries_features(df_all, timeseriescols, timeseriescols_diffs=None,
@@ -17,6 +18,7 @@ def get_timeseries_features(df_all, timeseriescols, timeseriescols_diffs=None,
     if timeseriescols_diffs is None:
         timeseriescols_diffs = []
 
+    print('(Getting Time Series) Marking consecutive rows with enough data ...')
     # Mark the rows of the data that fall into series with the `groupcol` and and the `datecol`
     df_all = get_consecutive(df=df_all,
                              groupcol=groupcol,
@@ -32,6 +34,7 @@ def get_timeseries_features(df_all, timeseriescols, timeseriescols_diffs=None,
     data_shifts = df_all[[groupcol, 'seq']].copy()
     data_shifts['_0'] = df_all.index
 
+    print('(Getting Time Series) Annotate windows ...')
     for i in range(window_back, 0, -1):
         data_shifts.loc[:, f'_-{i}'] = data_shifts.groupby([groupcol, 'seq'])['_0'].shift(-i)
 
@@ -45,7 +48,7 @@ def get_timeseries_features(df_all, timeseriescols, timeseriescols_diffs=None,
     # For defined timeseriescols, get the time series (using the shifted data index), and aggregate avg, max, and min
     if pool is not None:
         shift_results = [pool.apply_async(calculate_data_shift,
-                                          (df_all, col, windows, data_shifts, col in timeseriescols_diffs, window_back, window_forward))
+                                          (df_all[col], col, windows, data_shifts, col in timeseriescols_diffs, window_back, window_forward))
                          for col in timeseriescols]
 
         for res in shift_results:
@@ -53,7 +56,7 @@ def get_timeseries_features(df_all, timeseriescols, timeseriescols_diffs=None,
 
     else:
         for col in timeseriescols:
-            shifted_data = calculate_data_shift(df_all, col, windows, data_shifts, col in timeseriescols_diffs, window_back, window_forward)
+            shifted_data = calculate_data_shift(df_all[col], col, windows, data_shifts, col in timeseriescols_diffs, window_back, window_forward)
             data_shifts = data_shifts.join(shifted_data)
 
     data_shifts.drop(columns=windows, inplace=True)
@@ -79,9 +82,10 @@ def get_timeseries_features(df_all, timeseriescols, timeseriescols_diffs=None,
     return df_all
 
 
-def calculate_data_shift(df_all, col, windows, data_shifts, is_timeseries_diff, window_back, window_forward):
+def calculate_data_shift(df_col, col, windows, data_shifts, is_timeseries_diff, window_back, window_forward):
+    print(f"[{current_process().pid}] Getting time series split for {col} ...")
     windowcols = [col + w for w in windows]
-    shifted_data = np.vstack([df_all[col][data_shifts[window]].values for window in windows]).T
+    shifted_data = np.vstack([df_col[data_shifts[window]].values for window in windows]).T
     shifted_data = pd.DataFrame(index=data_shifts.index,
                                 columns=windowcols,
                                 data=shifted_data)
