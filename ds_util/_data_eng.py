@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 import numpy as np
+from multiprocessing import Pool, current_process
+
 
 
 def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklprotocol=-1, maxrows=np.inf, csv_params=None, csv=False):
@@ -59,8 +61,36 @@ def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklp
     print('Done!')
 
 
+def _df_load(work):
+
+    file, keep_filename, len_prefix, len_suffix, featurecol_name, savedir, csv_params = work
+
+    print(f"[{current_process().pid}] Loading file {file} from {savedir} ...")
+
+    try:
+        df_ = pd.read_pickle(savedir + '/' + file)
+
+    except:
+        if file[file.rfind('.') + 1:] in ['gzip', 'bz2', 'zip', 'xz']:
+            comp = file[file.rfind('.') + 1:]
+        else:
+            comp = 'infer'
+
+        params = {'filepath_or_buffer': savedir + '/' + file,
+                  'compression': comp}
+
+        params = {**params, **csv_params}
+
+        df_ = pd.read_csv(**params)
+
+    if keep_filename:
+        df_[featurecol_name] = file[len_prefix:len(file) - len_suffix]
+
+    return df_
+
+
 def df_load(savedir, keep_filename=False, len_prefix=None, len_suffix=4, featurecol_name='filename', axis=0,
-            reset_index=True, csv_params=None):
+            reset_index=True, csv_params=None, n_jobs=1):
 
     if csv_params is None:
         csv_params = {}
@@ -75,50 +105,26 @@ def df_load(savedir, keep_filename=False, len_prefix=None, len_suffix=4, feature
     if 'bycols' in files[0]:
         axis = 1
 
-    try:
-        df = pd.read_pickle(savedir + '/' + files[0])
+    allwork = zip(files,
+                  [keep_filename] * len(files),
+                  [len_prefix] * len(files),
+                  [len_suffix] * len(files),
+                  [featurecol_name] * len(files),
+                  [savedir] * len(files),
+                  [csv_params] * len(files))
 
-    except:
-        if files[0][files[0].rfind('.')+1:] in ['gzip', 'bz2', 'zip', 'xz']:
-            comp = files[0][files[0].rfind('.')+1:]
-        else:
-            comp = 'infer'
+    print(f"Loading {len(files)} files using {n_jobs} jobs...\n")
+    if n_jobs == 1:
+        dfs = []
+        for work in allwork:
+            dfs.append(_df_load(work))
 
-        params = {'filepath_or_buffer': savedir + '/' + files[0],
-                  'compression': comp}
+    else:
+        with Pool(n_jobs) as p:
+            dfs = p.map(_df_load, allwork)
 
-        params = {**params, **csv_params}
-
-        df = pd.read_csv(**params)
-
-    if keep_filename:
-        df[featurecol_name] = files[0][len_prefix:len(files[0])-len_suffix]
-
-    print(f'Loaded file 1 of {dirsize}.')
-
-    for i, file in enumerate(files[1:]):
-        try:
-            df_ = pd.read_pickle(savedir + '/' + file)
-
-        except:
-            if file[file.rfind('.')+1:] in ['gzip', 'bz2', 'zip', 'xz']:
-                comp = file[file.rfind('.')+1:]
-            else:
-                comp = 'infer'
-
-            params = {'filepath_or_buffer': savedir + '/' + file,
-                      'compression': comp}
-
-            params = {**params, **csv_params}
-
-            df_ = pd.read_csv(**params)
-
-        if keep_filename:
-            df_[featurecol_name] = file[len_prefix:len(file)-len_suffix]
-
-        df = pd.concat((df, df_), axis=axis, sort=True)
-
-        print(f'Loaded file {i + 2} of {dirsize}.')
+    print('Concatenating files into dataframe ...')
+    df = pd.concat(dfs, axis=axis, sort=True)
 
     if reset_index:
         df.reset_index(inplace=True, drop=True)
