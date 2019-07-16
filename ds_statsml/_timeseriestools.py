@@ -225,7 +225,7 @@ def fill_ts(keyword, timeseries, fname, diff_outlier_factor=1.5, savedir='./impr
     return series_imputed
 
 
-def get_consecutive(df, groupcol='ASIN', datecol='Date', consec_seq_length=3, agg_dict=None, new_aggs=None, reset_index=False):
+def get_consecutive(df, groupcol='ASIN', datecol='Date', consec_seq_length=3, agg_dict=None, new_aggs=None, reset_index=False, lenience=0):
     '''
     Given a Pandas Dataframe, a "group column" and a date column, go through each of the groups in the group column,
     and determine the sequences that last longer than the consec_seq_length. There should be multiple rows with the same values in the group column,
@@ -257,10 +257,8 @@ def get_consecutive(df, groupcol='ASIN', datecol='Date', consec_seq_length=3, ag
     :param groupcol:
     :param datecol:
     :param consec_seq_length:
-    :param valuecols:
     :param agg_dict: This should be in the form {'colname1': 'sum', 'colname2': ['median', 'max]}.
                         You can use 'sum', 'median', 'mean', 'std', 'min', 'argmin', 'max', or 'argmax'
-    :param calc_agg:
     :param new_aggs: If you want to add agg function(s), use this as a dictionary of new aggregate functions: {'newagg_name': lambda function}. The
     'aggname' here, would be referenced in the agg_dict after a certain column. E.g., {'col': 'newagg_name'}.
 
@@ -272,6 +270,9 @@ def get_consecutive(df, groupcol='ASIN', datecol='Date', consec_seq_length=3, ag
                 (np.percentile(a, 25, axis=axis) - IQR_thresh * (np.percentile(a, 75, axis=axis) - np.percentile(a, 25, axis=axis)))[:, np.newaxis],
                 (np.percentile(a, 25, axis=axis) + IQR_thresh * (np.percentile(a, 75, axis=axis) - np.percentile(a, 25, axis=axis)))[:, np.newaxis]),
                 axis=axis) * 30
+
+    :param reset_index: Keep the original index of the dataframe, or reset at the end
+    :param lenience: How many days in-between rows will we allow in one sequence. (Default = 0 days, so, contiguous)
 
     :return:
     '''
@@ -314,7 +315,7 @@ def get_consecutive(df, groupcol='ASIN', datecol='Date', consec_seq_length=3, ag
     def get_seq(a):
         global j
 
-        if a == 1:
+        if a <= lenience + 1:
             return j
         else:
             j += 1
