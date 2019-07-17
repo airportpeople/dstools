@@ -1,5 +1,6 @@
 import json
 import pickle as pkl
+import gzip
 import pandas as pd
 import numpy as np
 import os
@@ -9,10 +10,24 @@ from glob import glob
 
 
 def get_file(filename):
-    with open(filename, 'rb') as f:
-        data = pkl.load(f)
+    try:
+        with gzip.open(filename, 'rb') as f:
+            data = pkl.load(f)
+    except:
+        with open(filename, 'rb') as f:
+            data = pkl.load(f)
+
+    print(f'[{current_process().pid}] Opened estimator in {filename}.')
 
     return data
+
+
+def _save_tree(work):
+    i, est, modeldir = work
+
+    print(f'[{current_process().pid}] Saving {modeldir}/estimator_{i + 1}.pkl ...')
+    with gzip.open(f"{modeldir}/estimator_{i + 1}.pkl", "wb") as f:
+        pkl.dump(est, f, protocol=2)
 
 
 def get_tree_mapping_pred(work):
@@ -71,7 +86,28 @@ class LoadedTrees(object):
 
         return np.round(ensemble_mean, 1)
 
+    def save_trees(self, modeldir='.', modelname='mondrian'):
+
+        modeldir = modeldir + '/' + modelname
+        try:
+            os.mkdir(modeldir)
+        except FileExistsError:
+            os.mkdir(modeldir + "_" + pd.Timestamp.today().strftime("%Y-%m-%d_%H%M%S"))
+            modeldir = modeldir + "_" + pd.Timestamp.today().strftime("%Y-%m-%d_%H%M%S")
+
+        ests = self.estimators_
+
+        if self.n_jobs > 1:
+            with Pool(self.n_jobs if self.n_jobs > 0 else None) as p:
+                _ = p.map(_save_tree, list(zip(range(len(ests)), ests, [modeldir] * len(ests))))
+        else:
+            for i, est in enumerate(list(zip(range(len(ests)), ests, [modeldir] * len(ests)))):
+                _save_tree(est)
+
+        print(f"Pickled model estimators to the folder {modeldir}.")
+
     def save_tree_mappings(self, tree_mapping_dir, max_bit=32, round_to_int=True):
+
         n_estimators = len(self.estimators_)
         allwork = zip(range(n_estimators),
                       [tree_mapping_dir] * n_estimators,
