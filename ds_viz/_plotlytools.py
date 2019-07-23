@@ -1,13 +1,14 @@
 import numpy as np
 
 
-def get_iplot_text(data, names=None):
+def get_iplot_text(data, names=None, round_digits=2):
+
     if names is None:
         if hasattr(data, 'columns'):
             names = data.columns.tolist()
-            data = data.values
+            data = np.round(data.values, round_digits)
         else:
-            data = np.array(data)
+            data = np.round(np.array(data), round_digits)
             names = [f'var{i + 1}' for i in range(data.shape[1])]
 
     text_array = np.char.array([names[0]] * data.shape[0])

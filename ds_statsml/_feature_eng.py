@@ -204,25 +204,18 @@ class SafeLabelEncoder(LabelEncoder):
 
 
 # This needs to be adjusted to work for data with minimum values greater than 0
-# Also, try having a parameter like `buckets_per_oom=(1, 2, 5)`, for more customization
-def getbucketbins(data, targetcol, bucket_col_name='SalesDivision', leftover_cutoff=2000, buckets=None):
-    '''
-    DON'T USE THIS ... Just use the numpy histogram function ...
-    '''
+def getbucketbins(data, targetcol, bucket_col_name='SalesDivision', leftover_cutoff=2000, buckets=None, buckets_per_oom=(1, 2, 5)):
+    buckets_per_oom = sorted([b for b in buckets_per_oom if 0 < b < 10])
 
     if buckets is None:
         max_value = data[targetcol].max()
         max_oom = np.floor(np.log10(max_value)).astype(int)
 
         # Build all buckets for each of the groups we'll classify for
-        # After 20 (exclusive), for each order of magnitude, we include by 1s, 2s, and 5s.
-        buckets = [0, 1]
+        buckets = [0] + buckets_per_oom
         for oom in range(1, max_oom + 1):
-            buckets.append(1 * (10 ** oom))
-            # Skip the 20-50 group, and lump it in as a 10-50 group
-            if oom > 1:
-                buckets.append(2 * (10 ** oom))
-            buckets.append(5 * (10 ** oom))
+            for thresh in buckets_per_oom:
+                buckets.append(thresh * (10 ** oom))
 
         buckets = np.array(buckets)
         data.loc[:, bucket_col_name] = define_bins(data[targetcol].values.copy(), buckets)
