@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-import statsmodels.api as sm
 from cycler import cycler
 from sklearn.linear_model import lars_path, LinearRegression
 from sklearn.preprocessing import scale, label_binarize, MinMaxScaler
@@ -56,7 +55,7 @@ def report_scores(df_full, df_sample, actual_col, pred_col, scoring=None, name=N
     return axis
 
 
-def diagnose_reg(y, X=None, model=None, y_preds=None, title=None, fitlines=False):
+def diagnose_reg(y, X=None, model=None, y_preds=None, title=None, fitlines=False, figsize=(22, 6)):
     '''
     This plots three diagnostic plots for *linear* regression, given X (features) and *one* target, y. It looks at
     the relationship between predicted and target y values, and two residual plots.
@@ -97,7 +96,7 @@ def diagnose_reg(y, X=None, model=None, y_preds=None, title=None, fitlines=False
     g3.set_ylabel('|Residual|')
 
     fig.suptitle(title)
-    fig.set_size_inches(22, 6)
+    fig.set_size_inches(figsize[0], figsize[1])
 
     return fig
 
@@ -144,50 +143,48 @@ def larspath(X_train, y_train, columns=()):
     return fig
 
 
-def diagnose_lin_factor(model, factor, X_full, y, hasconst=True, logistic=False):
+def diagnose_lin_factor(factor, coeffs, X_train, y_train, intercept=0, featurecols=None, logistic=False, figsize=(18, 6)):
     '''
     Get diagnostic plots for a single factor in a regression model.
-    :param model: statsmodels model, the model
+    :param coeffs: intercept (0 if there isn't one), and then the features (e.g., [0, 2, 4.3] for features 'const', 'var1', and 'var2'
     :param factor: str, The factor of interest
-    :param X_full: pd.DataFrame, all the data you're interested as factors
-    :param y: array-like, Target
-    :param hasconst: bool, Whether or not there's a constant column in X_all
+    :param X_train: pd.DataFrame, all the data you're interested as factors
+    :param y_train: array-like, Target
     :param logistic: bool, Whether the factor of interest is logistc.
     :return: (fig, axes)
     '''
 
-    # Marginal Plot
-    if hasconst:
-        intercept = model.params['const']
+    if not hasattr(X_train, 'columns'):
+        features = list(featurecols)
     else:
-        intercept = 0
+        features = list(X_train.columns)
 
+    # Marginal Plot
     fig, axes = plt.subplots(1, 2)
-    fig.set_size_inches(18, 6)
+    fig.set_size_inches(figsize[0], figsize[1])
 
-    coeff = model.params[factor]
-    y_preds = coeff * X_full[factor] + intercept
-    gm = sns.regplot(x=X_full[factor], y=y, lowess=not logistic, ci=False, ax=axes[0],
-                line_kws={'color': 'red', 'label': 'Best Fit'})
-    axes[0].plot(X_full[factor], y_preds, color='orange', label='Model Prediction')
+    coeff = coeffs[features.index(factor)]
+
+    y_preds = coeff * X_train[factor] + intercept
+    gm = sns.regplot(x=X_train[factor], y=y_train, lowess=not logistic, ci=False, ax=axes[0],
+                     line_kws={'color': 'red', 'label': 'Best Fit'})
+    axes[0].plot(X_train[factor], y_preds, color='orange', label='Model Prediction')
     axes[0].set_title('Marginal Plot')
     gm.figure.legend()
 
     # Added Variable
     # Define the model y = Beta*X + Gamma*z + err
-    notfactor = [col for col in X_full.columns if col != factor]
-    z = X_full[factor]
-    X = X_full[notfactor]
-    if not hasconst:
-        X = sm.add_constant(X)
+    notfactor = [col for col in X_train.columns if col != factor]
+    z = X_train[factor]
+    X = X_train[notfactor]
 
     # Regress y on X, and get the residuals
-    lm_yX = LinearRegression()  # C is the regularization parameter, and we don't want to regularize
-    lm_yX.fit(X, y)
-    resid_yX = lm_yX.predict(X=X) - y
+    lm_yX = LinearRegression(fit_intercept=intercept != 0)
+    lm_yX.fit(X, y_train)
+    resid_yX = lm_yX.predict(X=X) - y_train
 
     # Regress z on X, and get residuals
-    lm_zX = LinearRegression()
+    lm_zX = LinearRegression(fit_intercept=intercept != 0)
     lm_zX.fit(X, z)
     resid_zX = lm_zX.predict(X=X) - z
 
@@ -195,11 +192,11 @@ def diagnose_lin_factor(model, factor, X_full, y, hasconst=True, logistic=False)
     # If you get a straight line, it means that the factor doesn't add much to the model (that is, no matter
     # the value of the residual of y on X, the difference z would add is unchanging. If it changes in a linear
     # way, then as the residuals get worse, z could rectify and add in a good way.
-    ga = sns.regplot(x=resid_zX, y=resid_yX, lowess=True, ax=axes[1], line_kws={'color': 'red'})
+    sns.regplot(x=resid_zX, y=resid_yX, lowess=True, ax=axes[1], line_kws={'color': 'red'})
     axes[1].set_xlabel('Residuals of z on X')
     axes[1].set_ylabel('Residuals of y on X')
     axes[1].set_title('Added Variable Plot')
-    fig.suptitle(f'{factor}')
+    fig.suptitle(f'Factor Analysis of {factor}')
 
     return fig, axes
 
