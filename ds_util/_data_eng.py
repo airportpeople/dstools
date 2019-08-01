@@ -7,15 +7,25 @@ from multiprocessing import Pool, current_process
 month_map = {m: pd.datetime(year=2000, month=m, day=1).strftime('%b') for m in range(1, 13)}
 
 
-def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklprotocol=-1, maxrows=np.inf, csv_params=None, csv=False):
+def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklprotocol=-1, maxrows=np.inf, csv_params=None, csv=False,
+            overwrite=False):
+
+    file_suffix = '' if overwrite else pd.Timestamp.today().strftime("%Y-%m-%d_%H%M%S")
 
     def save(df_, filename):
         if csv:
             params = csv_params if csv_params is not None else {}
+
+            if os.path.isfile(filename + '.csv') and not overwrite:
+                filename = filename + f'_{file_suffix}.csv'
+
             params['path_or_buf'] = filename + '.csv'
             df_.to_csv(**params)
 
         else:
+            if os.path.isfile(filename + '.pkl') and not overwrite:
+                filename = filename + f'_{file_suffix}.pkl'
+
             pd.to_pickle(df_, filename + '.pkl', protocol=pklprotocol)
 
     fullmem = sum(df.memory_usage())
@@ -32,10 +42,6 @@ def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklp
         n_batches = fullmem // int(maxsize - maxsize * 0.1)
 
     batch_size = df.shape[axis] // n_batches
-
-    if len([f for f in os.listdir(savedir) if f[0] != '.']) > 0:
-        print('There are already items saved here ... delete them, or move them, and then run this again.')
-        return None
 
     if by_group is not None:
         for i, group in enumerate(df[by_group].unique()):
