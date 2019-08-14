@@ -226,3 +226,7 @@ def clean_json(raw_, prev_key='', idx_separator='__'):
             num_subtables.append(len(raw_[k]))
 
     return raw_
+
+
+def flatten_multilevel_cols(df, separator="|"):
+    return [separator.join(col) for col in df.columns.values]
