@@ -71,7 +71,7 @@ def show_image(img, gray=False):
     return axis
 
 
-def multiplot_img(urls, n_cols=3, figsize=(22, 22), titles=None):
+def multiplot_img(urls, n_cols=3, figsize=(22, 22), titles=None, fontsize=18):
     n_rows = int(np.ceil(len(urls) / n_cols))
 
     fig = plt.figure(figsize=figsize)
@@ -80,7 +80,7 @@ def multiplot_img(urls, n_cols=3, figsize=(22, 22), titles=None):
         ax = fig.add_subplot(n_rows, n_cols, i + 1)
         ax.imshow(url_to_image(url))
         if titles is not None:
-            ax.set_title(titles[i], fontsize=22)
+            ax.set_title(titles[i], fontsize=fontsize)
         plt.grid(None)
 
     fig.tight_layout()
