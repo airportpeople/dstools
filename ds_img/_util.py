@@ -38,6 +38,9 @@ def equal_images(url1, url2, lenience=0.01, return_diff=False):
     im1 = url_to_image(url1, colors='bgr')
     im2 = url_to_image(url2, colors='bgr')
 
+    if im1.shape != im2.shape:
+        return False
+
     im1_gray = cv2.cvtColor(im1, cv2.COLOR_BGR2GRAY)
     im2_gray = cv2.cvtColor(im2, cv2.COLOR_BGR2GRAY)
 
@@ -77,7 +80,7 @@ def multiplot_img(urls, n_cols=3, figsize=(22, 22), titles=None):
         ax = fig.add_subplot(n_rows, n_cols, i + 1)
         ax.imshow(url_to_image(url))
         if titles is not None:
-            ax.set_title(titles[i])
+            ax.set_title(titles[i], fontsize=22)
         plt.grid(None)
 
     fig.tight_layout()

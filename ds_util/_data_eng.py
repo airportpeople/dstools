@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
+from functools import partial
 from multiprocessing import Pool, current_process
 
 
@@ -230,3 +231,35 @@ def clean_json(raw_, prev_key='', idx_separator='__'):
 
 def flatten_multilevel_cols(df, separator="|"):
     return [separator.join(col) for col in df.columns.values]
+
+
+def parallelize(data, func, n_jobs=8):
+    data_split = np.array_split(data, n_jobs)
+    pool = Pool(n_jobs)
+    data = pd.concat(pool.map(func, data_split))
+    pool.close()
+    pool.join()
+    return data
+
+
+def run_on_subset(func, data_subset):
+    return data_subset.apply(func, axis=1)
+
+
+def apply_mp(data, func, n_jobs=8):
+    '''
+
+    Basically, instead of df.apply(func), you would run apply_mp(df, func, n_jobs)
+
+    Parameters
+    ----------
+    data : pandas.DataFrame, numpy.array
+        The data, of course.
+    func : function
+    n_jobs : int
+
+    Returns
+    -------
+    pandas.DataFrame
+    '''
+    return parallelize(data, partial(run_on_subset, func), n_jobs)
