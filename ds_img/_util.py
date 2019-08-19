@@ -21,7 +21,7 @@ def url_to_image(url, default_url_prefix='https://images-na.ssl-images-amazon.co
     Source: https://www.pyimagesearch.com/2015/03/02/convert-url-to-image-with-python-and-opencv/
     '''
     # download the image, convert it to a NumPy array, and then read it into OpenCV format
-    if 'https:/' not in url:
+    if 'https:/' not in url and 'http:/' not in url:
         url = default_url_prefix + url
     resp = urllib.request.urlopen(url)
     image = np.asarray(bytearray(resp.read()), dtype="uint8")
