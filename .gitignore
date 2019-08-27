@@ -16,4 +16,4 @@
 __pycache__/
 data/
 tblogs/
-.DS_Store
+*.DS_Store
