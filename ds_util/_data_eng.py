@@ -6,6 +6,8 @@ from multiprocessing import Pool, current_process
 
 
 month_map = {m: pd.datetime(year=2000, month=m, day=1).strftime('%b') for m in range(1, 13)}
+table_names = []
+num_subtables = []
 
 
 def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklprotocol=-1, maxrows=np.inf, csv_params=None, csv=False,
