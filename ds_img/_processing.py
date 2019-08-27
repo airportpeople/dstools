@@ -89,7 +89,7 @@ def resize(image_path, width, height, background_colors=(255, 255, 255, 255)):
 
 def supervisely_to_df(label_path, agg_only=True):
     '''
-    Take a folder of label outputs from Supervisely (supervisely.ly "ann" downloads), and codify the information into a dataframe.
+    Take a folder of label outputs from Supervisely (supervisely.ly downloads), and codify the information into a dataframe.
 
     Parameters
     ----------
@@ -102,7 +102,7 @@ def supervisely_to_df(label_path, agg_only=True):
         The output is a Pandas Dataframe containing imaging analysis and scores for use in the near future.
 
     '''
-    filepaths = glob(label_path)
+    filepaths = glob(label_path + "/**")
 
     image_ids = []
     image_types = []
@@ -117,6 +117,18 @@ def supervisely_to_df(label_path, agg_only=True):
     for filepath in filepaths:
         with open(filepath) as f:
             label = json.load(f)
+
+        if len(label['objects']) < 1:
+            image_ids.append(filepath[filepath.rfind('/') + 1: filepath.rfind('.')])
+            image_types.append(label['tags'][0]['name'])
+            image_heights.append(label['size']['height'])
+            image_widths.append(label['size']['width'])
+
+            object_titles.append(np.nan)
+            object_x1s.append(np.nan)
+            object_y1s.append(np.nan)
+            object_x2s.append(np.nan)
+            object_y2s.append(np.nan)
 
         # Clean up object information, save locations of tags
         for object_ in label['objects']:
@@ -141,9 +153,9 @@ def supervisely_to_df(label_path, agg_only=True):
                               'object_x2': object_x2s,
                               'object_y2': object_y2s, })
 
-    obj_avgs = df_labels.groupby(['image_id', 'object_title'])\
-                        [['object_x1', 'object_y1', 'object_x2', 'object_y2']]\
-                        .mean().reset_index()
+    obj_avgs = df_labels.groupby(['image_id', 'object_title']) \
+        [['object_x1', 'object_y1', 'object_x2', 'object_y2']] \
+        .mean().reset_index()
 
     # Add columns (a set for each `object_title`) to contain averages for each of the sub-columns
     obj_avgs['object_width'] = (obj_avgs['object_x2'] - obj_avgs['object_x1']).abs()
@@ -165,6 +177,6 @@ def supervisely_to_df(label_path, agg_only=True):
     if agg_only:
         df_labels = df_labels[[col for col in df_labels.columns
                                if col not in ['object_title', 'object_x1', 'object_y1', 'object_x2', 'object_y2']]] \
-                             .drop_duplicates().reset_index(drop=True)
+            .drop_duplicates().reset_index(drop=True)
 
     return df_labels
