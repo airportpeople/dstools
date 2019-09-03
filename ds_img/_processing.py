@@ -1,8 +1,10 @@
+from ._plotting import *
 import json
 import urllib
 import cv2
 import pandas as pd
 import numpy as np
+import skimage
 from PIL import Image
 from glob import glob
 from skimage.measure import compare_ssim
@@ -151,32 +153,81 @@ def supervisely_to_df(label_path, agg_only=True):
                               'object_x1': object_x1s,
                               'object_y1': object_y1s,
                               'object_x2': object_x2s,
-                              'object_y2': object_y2s, })
+                              'object_y2': object_y2s})
 
-    obj_avgs = df_labels.groupby(['image_id', 'object_title']) \
-        [['object_x1', 'object_y1', 'object_x2', 'object_y2']] \
-        .mean().reset_index()
+    df_labels['object_width'] = (df_labels['object_x2'] - df_labels['object_x1']).abs()
+    df_labels['object_height'] = (df_labels['object_y2'] - df_labels['object_y1']).abs()
+    df_labels['object_area'] = df_labels['object_width'] * df_labels['object_height']
+
+    df_labels['object_min_x'] = df_labels[['object_x1', 'object_x2']].min(axis=1)
+    df_labels['object_max_x'] = df_labels[['object_x1', 'object_x2']].max(axis=1)
+    df_labels['object_min_y'] = df_labels[['object_y1', 'object_y2']].min(axis=1)
+    df_labels['object_max_y'] = df_labels[['object_y1', 'object_y2']].max(axis=1)
+
+    obj_avgs = df_labels.groupby(['image_id', 'object_title']).agg({'object_min_x': 'min',
+                                                                    'object_max_x': 'max',
+                                                                    'object_min_y': 'min',
+                                                                    'object_max_y': 'max',
+                                                                    'object_width': 'mean',
+                                                                    'object_height': 'mean',
+                                                                    'object_area': 'mean',
+                                                                    'image_type': 'count'}).reset_index()
 
     # Add columns (a set for each `object_title`) to contain averages for each of the sub-columns
-    obj_avgs['object_width'] = (obj_avgs['object_x2'] - obj_avgs['object_x1']).abs()
-    obj_avgs['object_height'] = (obj_avgs['object_y2'] - obj_avgs['object_y1']).abs()
-    obj_avgs['object_x'] = obj_avgs[['object_x2', 'object_x1']].mean(axis=1)
-    obj_avgs['object_y'] = obj_avgs[['object_y2', 'object_y1']].mean(axis=1)
+    obj_avgs['object_x_centroid'] = obj_avgs[['object_min_x', 'object_max_x']].mean(axis=1)
+    obj_avgs['object_y_centroid'] = obj_avgs[['object_min_y', 'object_max_y']].mean(axis=1)
 
+    obj_avgs.rename(columns={'object_width': 'avg_object_width',
+                             'object_height': 'avg_object_height',
+                             'object_area': 'avg_object_area',
+                             'image_type': 'num_objects'}, inplace=True)
+
+    # Reshape vertical data for objects into horizontal data
     obj_avgs.index = pd.MultiIndex.from_frame(obj_avgs[['image_id', 'object_title']])
     obj_avgs.drop(columns=['image_id', 'object_title'], inplace=True)
-
     obj_avgs = obj_avgs.unstack(level=1).reset_index()
-
     obj_avgs.columns = ['|'.join(col[::-1]) for col in obj_avgs.columns.values]
     obj_avgs.rename(columns={'|image_id': 'image_id'}, inplace=True)
-    obj_avgs.columns = [col.replace('object', 'avg') for col in obj_avgs.columns]
 
+    # Merge object data into image dataframe
     df_labels = df_labels.merge(obj_avgs, on='image_id', how='left')
+    df_labels['image_area'] = df_labels['image_width'] * df_labels['image_height']
 
     if agg_only:
-        df_labels = df_labels[[col for col in df_labels.columns
-                               if col not in ['object_title', 'object_x1', 'object_y1', 'object_x2', 'object_y2']]] \
-            .drop_duplicates().reset_index(drop=True)
+        titles = df_labels.groupby('image_id')['object_title'].apply(lambda x: sorted(x.dropna().unique().tolist())) \
+                          .reset_index().rename(columns={'object_title': 'object_titles'})
+        df_labels = df_labels.merge(titles, on='image_id', how='left')
+        df_labels.drop_duplicates(subset=['image_id'], inplace=True)
+        df_labels.drop(columns=['object_title', 'object_width', 'object_height', 'object_area',
+                                'object_x1', 'object_y1', 'object_x2', 'object_y2',
+                                'object_min_x', 'object_max_x', 'object_min_y', 'object_max_y'], inplace=True)
+
+    for kind in ['x_centroid', 'y_centroid']:
+        centroids = df_labels[[col for col in df_labels.columns if kind in col]]
+        max_centroid = centroids.max(axis=1)
+        min_centroid = centroids.min(axis=1)
+
+        middle_centroid = pd.concat((min_centroid, max_centroid), axis=1).mean(axis=1)
+
+        if kind == 'x_centroid':
+            loc_kind = 'horizontal'
+        else:
+            loc_kind = 'vertical'
+
+        df_labels[f'Hero|{loc_kind}_loc'] = (df_labels[f'Hero|object_{kind}'] - middle_centroid) / (middle_centroid - 1)
+
+    for kind in ['x', 'y']:
+        border_max = df_labels[[col for col in df_labels.columns if f'object_max_{kind}' in col]].max(axis=1)
+        border_min = df_labels[[col for col in df_labels.columns if f'object_min_{kind}' in col]].min(axis=1)
+
+        if kind == 'x':
+            white_space = border_min + (df_labels['image_width'] - border_max)
+            df_labels['white_space_horizontal'] = white_space / df_labels['image_width']
+        else:
+            white_space = border_min + (df_labels['image_height'] - border_max)
+            df_labels['white_space_vertical'] = white_space / df_labels['image_height']
+
+    df_labels['num_objects'] = df_labels[[col for col in df_labels.columns if 'num_objects' in col]].sum(axis=1)
+    df_labels['non-hero_area'] = (df_labels['image_area'] - df_labels['Hero|avg_object_area']) / df_labels['image_area']
 
     return df_labels

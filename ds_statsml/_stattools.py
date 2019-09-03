@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
+import scipy.stats as stats
 from sklearn.base import BaseEstimator, TransformerMixin, RegressorMixin
 from sklearn.preprocessing import Imputer
 from statsmodels.stats.outliers_influence import variance_inflation_factor
@@ -266,3 +267,43 @@ def get_outliers(df_all, groupcols, group_abbrev, statcols, outlier_factors=1.5,
 
     if not inplace:
         return df
+
+
+def _N_bma(alpha, beta, l, x):
+    '''
+    Get sample size for a dataset (x), alpha, beta, and effect size (l). This is one iteration.
+    '''
+    z_alpha2 = stats.norm.ppf(alpha / 2)
+    z_beta = stats.norm.ppf(beta)
+    sigma = x.std()
+
+    nh = ((z_alpha2 + z_beta) ** 2 * sigma ** 2) / l ** 2
+    return nh
+
+
+def sample_size_bma(conv_rates, alpha=0.1, beta=0.15, l=0.05, iters=1000):
+    '''
+    Bootstrap Sample Size calculation as described in "Sample Size Calculations in Clinical Research 2nd ed", by
+    S. Chow, et al., (Chapman and Hall, 2008) WW. on page 350 (section n13.3)
+
+    Parameters
+    ----------
+    conv_rates
+    alpha
+    beta
+    l
+    iters
+
+    Returns
+    -------
+
+    '''
+    nh_all = []
+    conv_rates = np.array(conv_rates)
+
+    for h in range(iters):
+        x = np.random.choice(conv_rates, conv_rates.shape)
+        nh_all.append(_N_bma(alpha, beta, l, x))
+
+    N_bma = np.ceil(np.median(nh_all))  # Bootstrap-Median Approach
+    return int(np.ceil(N_bma))
