@@ -1,13 +1,13 @@
-from ._plotting import *
 import json
 import urllib
 import cv2
 import pandas as pd
 import numpy as np
-import skimage
+import ast
 from PIL import Image
 from glob import glob
 from skimage.measure import compare_ssim
+from ds_util import flatten_list
 
 
 def url_to_image(url, default_url_prefix='https://images-na.ssl-images-amazon.com/images/I/', colors='rgb'):
@@ -211,10 +211,14 @@ def supervisely_to_df(label_path, agg_only=True):
 
         if kind == 'x_centroid':
             loc_kind = 'horizontal'
+            half_width = df_labels[f'image_width'] / 2
+            df_labels[f'Hero|{loc_kind}_loc_rel'] = (df_labels[f'Hero|object_{kind}'] - middle_centroid) / (middle_centroid - 1)
+            df_labels[f'Hero|{loc_kind}_loc_abs'] = (df_labels[f'Hero|object_{kind}'] - half_width) / half_width
         else:
             loc_kind = 'vertical'
-
-        df_labels[f'Hero|{loc_kind}_loc'] = (df_labels[f'Hero|object_{kind}'] - middle_centroid) / (middle_centroid - 1)
+            half_height = df_labels[f'image_height'] / 2
+            df_labels[f'Hero|{loc_kind}_loc_rel'] = (middle_centroid - df_labels[f'Hero|object_{kind}']) / (middle_centroid - 1)
+            df_labels[f'Hero|{loc_kind}_loc_abs'] = (half_height - df_labels[f'Hero|object_{kind}']) / half_height
 
     for kind in ['x', 'y']:
         border_max = df_labels[[col for col in df_labels.columns if f'object_max_{kind}' in col]].max(axis=1)
@@ -229,5 +233,17 @@ def supervisely_to_df(label_path, agg_only=True):
 
     df_labels['num_objects'] = df_labels[[col for col in df_labels.columns if 'num_objects' in col]].sum(axis=1)
     df_labels['non-hero_area'] = (df_labels['image_area'] - df_labels['Hero|avg_object_area']) / df_labels['image_area']
+
+    object_titles = df_labels.object_titles.astype(str).unique().tolist()
+    object_titles = list(set(flatten_list([ast.literal_eval(x) for x in object_titles])))
+
+    for object_title in object_titles:
+        w = df_labels['image_width']
+        h = df_labels['image_height']
+        x = df_labels[f"{object_title}|object_x_centroid"]
+        y = df_labels[f"{object_title}|object_y_centroid"]
+
+        df_labels[f"{object_title}|x_section"] = np.ceil((x / w) * 3)
+        df_labels[f"{object_title}|y_section"] = np.ceil((y / h) * 3)
 
     return df_labels

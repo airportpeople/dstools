@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import skimage
 from ._processing import *
 from matplotlib.patches import Rectangle
 
@@ -57,7 +58,7 @@ def plot_rectangle(axis, lower_left_point, width, height, ls='--', lw=3, color='
     axis.add_patch(p)
 
 
-def show_imagely(image_id, df_labels, colors=('red', 'orange', 'blue', 'pink', 'yellow')):
+def show_imagely(image_id, df_labels, colors=('red', 'orange', 'blue', 'pink', 'yellow'), show_3grid=False):
     df_ = df_labels[df_labels['object_titles'].apply(len) > 0]
     items = df_[df_.image_id == image_id]['object_titles'].iloc[0]
     colors = list(colors)[:len(items)]
@@ -77,6 +78,15 @@ def show_imagely(image_id, df_labels, colors=('red', 'orange', 'blue', 'pink', '
 
         axis.scatter([x_centroid], [y_centroid], color=color, s=50, label=f'{item} Center')
         plot_rectangle(axis, (left_x, lower_y), width, height, color=color, label=f'Average {item}')
+
+    if show_3grid:
+        w = df_[df_.image_id == image_id]['image_width'].iloc[0]
+        h = df_[df_.image_id == image_id]['image_height'].iloc[0]
+
+        axis.axvline(1 / 3 * w, color='black', ls='--')
+        axis.axvline(2 / 3 * w, color='black', ls='--')
+        axis.axhline(1 / 3 * h, color='black', ls='--')
+        axis.axhline(2 / 3 * h, color='black', ls='--')
 
     axis.legend()
     print(image_id)
