@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import statsmodels.api as sm
 import scipy.stats as stats
+from itertools import combinations
+from multiprocessing import current_process, Pool
 from sklearn.base import BaseEstimator, TransformerMixin, RegressorMixin
 from sklearn.preprocessing import Imputer
 from statsmodels.stats.outliers_influence import variance_inflation_factor
@@ -307,3 +309,82 @@ def sample_size_bma(conv_rates, alpha=0.1, beta=0.15, l=0.05, iters=1000):
 
     N_bma = np.ceil(np.median(nh_all))  # Bootstrap-Median Approach
     return int(np.ceil(N_bma))
+
+
+def _multi_fishers_exact(work):
+    '''
+    Run Fisher's Exact Test for one pair of testing groups.
+    '''
+    _within, testing_groups, df_contingencies, target_a, target_b = work
+
+    print(f"[{current_process().pid}] Testing {testing_groups} within {_within} ...")
+
+    # Fisher's Exact Test uses odds ratios, so we capture this contingency table
+    contingency_table = df_contingencies[list(testing_groups)].loc[[target_a, target_b], :]
+    odds_ratio, p_value = stats.fisher_exact(contingency_table)
+
+    # Keep conversion rates for presentation
+    proportions_a = df_contingencies[list(testing_groups)].loc[target_a, :] / \
+                    df_contingencies[list(testing_groups)].loc['total', :]
+
+    proportions_b = df_contingencies[list(testing_groups)].loc[target_b, :] / \
+                    df_contingencies[list(testing_groups)].loc['total', :]
+
+    df_results = {'within': _within,
+                  'testing_group_1': testing_groups[0],
+                  f'{target_a.lower().replace(" ", "")}_1': df_contingencies[list(testing_groups)[0]][target_a],
+                  f'{target_b.lower().replace(" ", "")}_1': df_contingencies[list(testing_groups)[0]][target_b],
+                  f'totals_1': df_contingencies[list(testing_groups)[0]]['total'],
+                  f'proportion_1_{target_a.lower().replace(" ", "")}': proportions_a[testing_groups[0]],
+                  f'proportion_1_{target_b.lower().replace(" ", "")}': proportions_b[testing_groups[0]],
+                  'testing_group_2': testing_groups[1],
+                  f'{target_a.lower().replace(" ", "")}_2': df_contingencies[list(testing_groups)[1]][target_a],
+                  f'{target_b.lower().replace(" ", "")}_2': df_contingencies[list(testing_groups)[1]][target_b],
+                  f'totals_2': df_contingencies[list(testing_groups)[1]]['total'],
+                  f'proportion_2_{target_a.lower().replace(" ", "")}': proportions_a[testing_groups[1]],
+                  f'proportion_2_{target_b.lower().replace(" ", "")}': proportions_b[testing_groups[1]],
+                  'odds_ratio': odds_ratio,
+                  'p_value': p_value,
+                  f'top_group_{target_a.lower().replace(" ", "")}': proportions_a.sort_values(ascending=False).index[0],
+                  f'top_group_{target_b.lower().replace(" ", "")}': proportions_b.sort_values(ascending=False).index[0]}
+
+    return df_results
+
+
+def multi_fishers_exact(df_testing, test_group_col, target_a, target_b, within='all', n_jobs=12):
+    '''
+
+    Parameters
+    ----------
+    within
+    test_group_col
+    n_jobs
+
+    Returns
+    -------
+
+    '''
+    df_testing['total'] = df_testing[target_a] + df_testing[target_b]
+
+    if within == 'all':
+        within_samples = [within]
+        df_contingencies_all = {within: df_testing.groupby(test_group_col)[[target_a, target_b, 'total']].sum().T}
+    else:
+        # There needs to be at least two test groups to test on, so we only get samples `within` that contain at least two test groups
+        vcounts = df_testing.groupby(within)[test_group_col].nunique()
+        within_samples = vcounts[vcounts > 1].index.tolist()
+        df_testing = df_testing[df_testing[within].isin(within_samples)]
+        df_contingencies_all = df_testing.groupby([within, test_group_col])[[target_a, target_b, 'total']].sum().T
+
+    allwork = []
+
+    for _within in within_samples:
+        df_contingencies = df_contingencies_all[_within]
+        testing_groups_all = list(combinations(df_contingencies.columns, 2))
+        for testing_groups in testing_groups_all:
+            allwork.append((_within, testing_groups, df_contingencies, target_a, target_b))
+
+    with Pool(n_jobs) as p:
+        results = p.map(_multi_fishers_exact, allwork)
+
+    return pd.DataFrame(results)
