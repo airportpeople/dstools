@@ -232,9 +232,9 @@ def get_outliers(df_all, groupcols, group_abbrev, statcols, outlier_factors=1.5,
         .reset_index()
 
     for statcol in statcols[1:]:
-        if np.percentile(df[statcols], 25) == np.percentile(df[statcols], 75):
-            inflated_value = np.percentile(df[statcols], 25)
-            print(f"{statcols} is inflated at the value {inflated_value} (comprises >= 50% of the data).")
+        if np.percentile(df[statcol], 25) == np.percentile(df[statcol], 75):
+            inflated_value = np.percentile(df[statcol], 25)
+            print(f"{statcol} is inflated at the value {inflated_value} (comprises >= 50% of the data).")
             print("Only checking outliers for non-inflated values.")
             inflated_values.append(inflated_value)
         else:
@@ -274,6 +274,21 @@ def get_outliers(df_all, groupcols, group_abbrev, statcols, outlier_factors=1.5,
 def _N_bma(alpha, beta, l, x):
     '''
     Get sample size for a dataset (x), alpha, beta, and effect size (l). This is one iteration.
+    
+    Parameters
+    ----------
+    alpha : float
+        The preferred minimum test confidence level (Type I error)
+    beta : float
+        Test power level (1 - Type II error)
+    l : float
+        Test size or the minimum meaningful difference to be tested between two samples.
+    x : np.array
+        The values used to get statistics from the population to calculate sample size
+
+    Returns
+    -------
+    (float) The sample size estimation
     '''
     z_alpha2 = stats.norm.ppf(alpha / 2)
     z_beta = stats.norm.ppf(beta)
@@ -283,28 +298,33 @@ def _N_bma(alpha, beta, l, x):
     return nh
 
 
-def sample_size_bma(conv_rates, alpha=0.1, beta=0.15, l=0.05, iters=1000):
+def sample_size_bma(x_sample, alpha=0.1, beta=0.15, l=0.05, iters=1000):
     '''
     Bootstrap Sample Size calculation as described in "Sample Size Calculations in Clinical Research 2nd ed", by
-    S. Chow, et al., (Chapman and Hall, 2008) WW. on page 350 (section n13.3)
+    S. Chow, et al., (Chapman and Hall, 2008) WW. on page 350 (section 13.3).
 
     Parameters
     ----------
-    conv_rates
-    alpha
-    beta
-    l
-    iters
+    x_sample : array-like
+        The values used to get statistics from the population to calculate sample size
+    alpha : float
+        The preferred minimum test confidence level (Type I error)
+    beta : float
+        Test power level (1 - Type II error)
+    l : float
+        Test size or the minimum meaningful difference to be tested between two samples.
+    iters : int
+        Number of iterations of calculating a sample size within the bootstrap sample sizse calculation scheme. (Most cases: 1000)
 
     Returns
     -------
-
+    (float) The estimated minimum sample size for the parameters given
     '''
     nh_all = []
-    conv_rates = np.array(conv_rates)
+    x_sample = np.array(x_sample)
 
     for h in range(iters):
-        x = np.random.choice(conv_rates, conv_rates.shape)
+        x = np.random.choice(x_sample, x_sample.shape)
         nh_all.append(_N_bma(alpha, beta, l, x))
 
     N_bma = np.ceil(np.median(nh_all))  # Bootstrap-Median Approach
@@ -353,16 +373,52 @@ def _multi_fishers_exact(work):
 
 def multi_fishers_exact(df_testing, test_group_col, target_a, target_b, within='all', n_jobs=12):
     '''
+    Run pair-wise Fisher's exact tests between all test groups within each (or the) subset in the data. The data in the columns in question do not
+    need to be aggregated, as this function will run the group bys.
+
+    The Fisher's Exact Test is only applicable between two test groups of values, where the variance of each group is roughly equal.
+    Breaking the data up into subsets before dividing out test groups may be necessary if this assumption is only met within subsets. This function
+    allows you to break up the data into subsets (by a column) and then test groups to run pair-wise Fisher's Exact Tests.
+
+    So, e.g., suppose you're working to test if the kids on the left side of the class tend to have a higher test score than the kids on the right
+    side of the class. You may have a data set like this:
+
+        student_name | week | side_of_class | correct_answers | incorrect_answers
+        'billy'         1         'left'             20            80
+        'billy'         2         'right'            20            80
+         'joe'          2         'right'            40            60
+
+                                        ...
+
+    (I.e., every week we take a quiz, no assigned seats, sometimes students sit on the left and sometimes on the right).
 
     Parameters
     ----------
-    within
-    test_group_col
-    n_jobs
+    df_testing : pd.DataFrame
+        The data with all the test groups and subsets. All columns needed for this function must be in the dataframe.
+        * In the example above, the data set here would just be that data set.
+    test_group_col : str
+        The column containing the test groups. Within any subset (from `within`), you could have multiple test groups which you'd like to compare
+        between one another. This is the column containing the values delineating which test group each row belongs to.
+        * In the example, the test_group_col would be `side_of_class`.
+    target_a : str
+        The column containing the number of observations of Target A (maybe your main target of interest). There should be some concept of "total"
+        when you add up `target_a` and `target_b`.
+        * I'd probably pick `correct_answers` as `target_a`
+    target_b : str
+        The complement to `target_a`.
+        * I'd probably pick `incorrect_answers` as `target_b`
+    within : str
+         The subsets to divide the data such that within any subset, comparing test groups is valid.
+         * We COULD assume that the variance of correct_answers is roughly the same among all students in the class. Or, we could say that comparing
+           scores between class sides only makes sense for a particular student. In the latter case, you'd choose `student_name` as `within`. In the
+           former case, you'd just use `within='all'`.
+    n_jobs : int
+        The number of processes to use when running the Fisher's Exact Tests.
 
     Returns
     -------
-
+    (pd.DataFrame) An output containing all the results from the tests including p-values, odds ratios, and aggregate data.
     '''
     df_testing['total'] = df_testing[target_a] + df_testing[target_b]
 

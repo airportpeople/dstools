@@ -1,7 +1,6 @@
 import os
 import pandas as pd
 import numpy as np
-from functools import partial
 from multiprocessing import Pool, current_process
 
 
@@ -12,7 +11,38 @@ num_subtables = []
 
 def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklprotocol=-1, maxrows=np.inf, csv_params=None, csv=False,
             overwrite=False):
-
+    '''
+    Save a large dataframe as multiple files based on the maximum number of rows, by groups, or the maximum (in buffer) dataframe size.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The original data set
+    savedir : str
+        File path to save the data files
+    by_group : str (optional)
+        The name of the column with groups by which you'd like to save the data.
+    dfname : str (optional)
+        A prefix for all the data files to be saved
+    maxsize : float (optional)
+        The maximum size (in buffer) of each of the data files you'd like to save
+    axis : int, in {0, 1} (optional)
+        In the end, this is the axis you'll end up concatenating on when you load the data.
+    pklprotocol : int, (optional)
+        The pickle protocol to pass to `df._to_pickle`
+    maxrows : int, (optional)
+        The maximum number of rows for each file containing a subset of the data.
+    csv_params : dict, (optional)
+        The parameters to send to `df.to_csv`
+    csv : bool, (optional, default: False)
+        Whether you'd like to save as csv files (True) or pickle files (False)
+    overwrite : bool, (optional, default: False)
+        If you'd like to overwrite data that is already in the directory, 
+        or save different files with time stamp as a suffix for each file.
+    Returns
+    -------
+    None
+    '''
     file_suffix = '' if overwrite else pd.Timestamp.today().strftime("%Y-%m-%d_%H%M%S")
 
     def save(df_, filename):
@@ -73,8 +103,11 @@ def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklp
 
 
 def _df_load(work):
+    '''
+    Load one file ...
+    '''
 
-    file, keep_filename, len_prefix, len_suffix, featurecol_name, savedir, csv_params = work
+    file, keep_filename, len_prefix, len_suffix, filename_column, savedir, csv_params = work
 
     print(f"[{current_process().pid}] Loading file {file} from {savedir} ...")
 
@@ -95,13 +128,44 @@ def _df_load(work):
         df_ = pd.read_csv(**params)
 
     if keep_filename:
-        df_[featurecol_name] = file[len_prefix:len(file) - len_suffix]
+        df_[filename_column] = file[len_prefix:len(file) - len_suffix]
 
     return df_
 
 
-def df_load(savedir, keep_filename=False, len_prefix=None, len_suffix=4, featurecol_name='filename', axis=0,
+def df_load(savedir, keep_filename=False, len_prefix=None, len_suffix=4, filename_column='filename', axis=0,
             reset_index=True, csv_params=None, n_jobs=1):
+    '''
+    Load multiple files into a Pandas DataFrame (possibly saved using `df_dump`, but not necessarily).
+    
+    Parameters
+    ----------
+    savedir : str
+        The filepath with the files (only those files) containing the data. Each file should have the *same* columns and the *same* file type. There
+        should be no other kinds of file inside the `savedir`.
+    keep_filename : bool
+        Whether to keep the filename as a column in the data (handy if the files are saved as dates, or something like that).
+    len_prefix : int
+        If `keep_filename == True`, then for each filename (after the last '/' in the file path) this is the number of unwanted characters at the
+        beginning of the file name. If you want all of the filename, you can just leave this as None.
+    len_suffix : int
+        If `keep_filename == True`, then for each filename (after the last '/' in the file path) this is the number of unwanted characters at the
+        end of the file name (including the '.csv' or '.pkl', etc.). If you want all of the filename, you can just leave this as 4.
+    filename_column : str
+        If `keep_filename == True`, then this is the name of the column where you want to put the filenames.
+    axis : int, in {0, 1}
+        This is the axis to concatenate the files on to get the final dataset.
+    reset_index : bool
+        Whether to reset the index in the final data frame after having concatenated.
+    csv_params : dict
+        The parameters to send to `pd.read_csv`
+    n_jobs : int
+        The number of processes to run
+
+    Returns
+    -------
+    (pd.DataFrame) The final data set
+    '''
 
     if csv_params is None:
         csv_params = {}
@@ -120,7 +184,7 @@ def df_load(savedir, keep_filename=False, len_prefix=None, len_suffix=4, feature
                   [keep_filename] * len(files),
                   [len_prefix] * len(files),
                   [len_suffix] * len(files),
-                  [featurecol_name] * len(files),
+                  [filename_column] * len(files),
                   [savedir] * len(files),
                   [csv_params] * len(files))
 
@@ -144,7 +208,20 @@ def df_load(savedir, keep_filename=False, len_prefix=None, len_suffix=4, feature
 
 
 def df_join_array(df, array, column_names):
+    '''
+    Join a Numpy array with a Pandas DataFrame.
 
+    Parameters
+    ----------
+    df : pd.DataFrame
+    array : np.array
+    column_names : list
+        A list of the column names to use on the Numpy array
+
+    Returns
+    -------
+    (pd.DataFrame) The final data frame.
+    '''
     df = pd.concat([df, pd.DataFrame(columns=column_names)], sort=True)
     df.loc[:, column_names] = array
 
@@ -231,37 +308,27 @@ def clean_json(raw_, prev_key='', idx_separator='__'):
     return raw_
 
 
-def flatten_multilevel_cols(df, separator="|"):
-    return [separator.join(col) for col in df.columns.values]
-
-
-def parallelize(data, func, n_jobs=8):
-    data_split = np.array_split(data, n_jobs)
-    pool = Pool(n_jobs)
-    data = pd.concat(pool.map(func, data_split))
-    pool.close()
-    pool.join()
-    return data
-
-
-def run_on_subset(func, data_subset):
-    return data_subset.apply(func, axis=1)
-
-
-def apply_mp(data, func, n_jobs=8):
+def flatten_multilevel_cols(df, separator="|", inplace=False):
     '''
-
-    Basically, instead of df.apply(func), you would run apply_mp(df, func, n_jobs)
+    Get a single level of columns from pandas MultiIndex columns.
 
     Parameters
     ----------
-    data : pandas.DataFrame, numpy.array
-        The data, of course.
-    func : function
-    n_jobs : int
+    df : pd.DataFrame
+        The DataFrame with a multiindex to be droped to a single level
+    separator : str, (optional, default: '|')
+        The preferred separator between levels for each consolidated column name (e.g., col_level1|col_level2)
+    inplace : bool, (optional, default: False)
+        Whether to run the script on the data frame's columns in place
 
     Returns
     -------
-    pandas.DataFrame
+    If `inplace == True` : (None) This works on the columns in the dataframe
+    If `inplace == False` : (list-like) The list of new column names
     '''
-    return parallelize(data, partial(run_on_subset, func), n_jobs)
+
+    new_columns = [separator.join(col) for col in df.columns.values]
+    if inplace:
+        df.columns = new_columns
+
+    return new_columns

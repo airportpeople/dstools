@@ -70,23 +70,34 @@ def file_to_image(filepath, colors='rgb', flag=cv2.IMREAD_COLOR):
     return image
 
 
-def equal_images(url1, url2, lenience=0.01, return_diff=False):
+def equal_images(im1, im2, lenience=0.01, return_diff=False):
     '''
-    Checks if two images are equal, up to some level of lenience.
+    Check if two images are equal, up to some level of lenience. We use the mean structural similarity index between the two images. This is
+    basically the MSE, but taking into account the "texture" of the image. So, imagine three images:
+
+    Image 1: Original Image
+    Image 2: Image 1 + random_noise
+    Image 3: Image 1 + constant (i.e., maybe just brighter)
+
+    Image 2 and 3 could have the same MSE, but Image 2 (noisy, different texture, essentially a totally different image) will have a much
+    lower structural similarity.
+
     Parameters
     ----------
-    url1
-    url2
-    lenience
-    return_diff
+    im1 : np.array
+        This is the output of either url_to_image or file_to_image for the first image.
+    im2 : np.array
+        Second image (same kind as im1)
+    lenience : float, in [0, 1]
+        How much structural difference you are willing to accept between the two images before saying they are unequal. Recommend numbers on the
+        order of 0.01.
+    return_diff : bool
+        Whether to return an array for the difference-image, that is, the image that shows only the difference between the two images.
 
     Returns
     -------
-
+    bool if return_diff == False, or tuple (bool, array) if return_diff == True.
     '''
-    im1 = url_to_image(url1, colors='bgr')
-    im2 = url_to_image(url2, colors='bgr')
-
     if im1.shape != im2.shape:
         return False
 
@@ -107,9 +118,9 @@ def equal_images(url1, url2, lenience=0.01, return_diff=False):
         return are_equal
 
 
-def resize(image_path, width, height, background_colors=(255, 255, 255, 255)):
+def resize(image_path, width, height, background_colors=(255, 255, 255)):
     '''
-    Resize PIL image keeping ratio and using white background.
+    Resize PIL image keeping the aspect ratio and using some background color. The background color sacle is RGB.
     '''
     image_pil = Image.open(image_path)
     ratio_w = width / image_pil.width
@@ -126,7 +137,7 @@ def resize(image_path, width, height, background_colors=(255, 255, 255, 255)):
         resize_height = height
 
     image_resize = image_pil.resize((resize_width, resize_height), Image.ANTIALIAS)
-    background = Image.new('RGBA', (width, height), background_colors)
+    background = Image.new('RGB', (width, height), background_colors)
     offset = (round((width - resize_width) / 2), round((height - resize_height) / 2))
     background.paste(image_resize, offset)
 
