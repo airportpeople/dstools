@@ -10,18 +10,23 @@ from skimage.measure import compare_ssim
 from ds_util import flatten_list
 
 
-def url_to_image(url, default_url_prefix='https://images-na.ssl-images-amazon.com/images/I/', colors='rgb'):
+def url_to_image(url, default_url_prefix='https://images-na.ssl-images-amazon.com/images/I/', colors='rgb', flag=cv2.IMREAD_COLOR):
     '''
     Retrive the image from a url
 
     Parameters
     ----------
-    url
-    default_url_prefix
-
+    url : str
+        The url to the image
+    default_url_prefix : str
+        (Applies if the url is actually just the end of the url, e.g., asdfjk.jpg.) This is the first part of the url, containing "http://..."
+    colors : {'rgb', 'bgr'}
+        If you're running things with Matplotlib, recommend using 'rgb', and if using OpenCV, use 'bgr'
+    flag : cv2 flag object
+        This is the OpenCV flag to pass into cv2.imdecode
     Returns
     -------
-
+    (np.array) The image in array form.
 
     Source: https://www.pyimagesearch.com/2015/03/02/convert-url-to-image-with-python-and-opencv/
     '''
@@ -31,15 +36,54 @@ def url_to_image(url, default_url_prefix='https://images-na.ssl-images-amazon.co
     resp = urllib.request.urlopen(url)
     image = np.asarray(bytearray(resp.read()), dtype="uint8")
     if colors == 'rgb':
-        image = cv2.imdecode(image, cv2.IMREAD_COLOR)[..., ::-1]    # Convert from BGR (OpenCV) to RGB (Matplotlib)
+        image = cv2.imdecode(image, flag)[..., ::-1]    # Convert from BGR (OpenCV) to RGB (Matplotlib)
     else:
-        image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+        image = cv2.imdecode(image, flag)
+
+    # return the image
+    return image
+
+
+def file_to_image(filepath, colors='rgb', flag=cv2.IMREAD_COLOR):
+    '''
+    Retrive the image from a file path, and output an array.
+
+    Parameters
+    ----------
+    filepath : str
+        The path to the image
+    colors : {'rgb', 'bgr'}
+        If you're running things with Matplotlib, recommend using 'rgb', and if using OpenCV, use 'bgr'
+    flag : cv2 flag object
+        This is the OpenCV flag to pass into cv2.imdecode
+
+    Returns
+    -------
+    (np.array) The image in array form.
+    '''
+    if colors == 'rgb':
+        image = cv2.imread(filepath, flag)[..., ::-1]    # Convert from BGR (OpenCV) to RGB (Matplotlib)
+    else:
+        image = cv2.imread(filepath, flag)
 
     # return the image
     return image
 
 
 def equal_images(url1, url2, lenience=0.01, return_diff=False):
+    '''
+    Checks if two images are equal, up to some level of lenience.
+    Parameters
+    ----------
+    url1
+    url2
+    lenience
+    return_diff
+
+    Returns
+    -------
+
+    '''
     im1 = url_to_image(url1, colors='bgr')
     im2 = url_to_image(url2, colors='bgr')
 
@@ -93,6 +137,54 @@ def supervisely_to_df(label_path, agg_only=True):
     '''
     Take a folder of label outputs from Supervisely (supervisely.ly downloads), and codify the information into a dataframe.
 
+    A Few Column Descriptions:
+
+        `[object]|x_section`
+            In the 9x9 square, this is the x-value/location (1, 2, or 3) corresponding to the square the object (e.g., Bonus Item, Hero,
+            etc.) is in. Analogously for the `[object]|y_section`.
+
+        `[object]|avg_object_area`
+            The average area of all objects in the image of this type (i.e., [object] could be Hero, Prop, Bonus Item, etc.).
+
+        `[object]|avg_object_width`
+            The average width of all objects in the image of this type. Analogously for `[object]|avg_object_height`.
+
+        `[object]|horizontal_loc_abs`
+            The *average* absolute horizontal location of the center of the objects in the image of this type, by percentage. So, if there are two
+            objects of this type in the image, both equally far from the center line (horizontally), then this value will be 0. If there is one
+            object of this type in the image, and it is halfway between the center line and the right edge, this will be .50. 1 is far right, and
+            -1 is far left. This is analogous to `[object]|vertical_loc_abs`, but up and down where -1 is bottom and 1 is top.
+
+        `[object]|horizontal_loc_rel`
+            The *average* horizontal location of the center of the objects in the image of this type, by percentage, relative to the furthest left
+            and furthest right objects in the image (of all types). So, if there is only one object in the image, and it is this object, then the
+            value will be 0. If there are two objects, one to the left of the other, this must be either -1 or 1. Analagously for
+            `[object]|vertical_loc_rel`.
+
+        `[object]|num_objects`
+            The total number of objects in the image.
+
+        `[object]|object_max_x`
+            The furthest point to the right in an image where there is some object. So, this is the x value for the furthest right edge of the
+            furthest right object in the image. Analogously for `[object]|object_max_y` (furthest to the bottom), `[object]|object_min_x`
+            (furthest to the left), and `[object]|object_min_y` (furthest to the top).
+
+        `[object]|object_x_centroid`
+            The *average* center (along the x axis) for objects in the image of this type. Analagously for `[object]|object_y_centroid`,
+            but the average center along the y axis.
+
+        `[object]|x_section`
+            We break the image up into a 3 x 3 grid. If each box in the grid is labeled by its x/y location (e.g., (1, 1), (1, 2), (3, 2), etc.),
+            then this is the x coordinate of the box that this object *on average* is located. This is where the *average* object_x_centroid is
+            located in the grid. Analagously for `[object]|y_section`.
+
+        `white_space_horizontal`
+            The *percentage* of relative horizontal (left/right) space that the image has empty space. We measure this by comparing the image width
+            with the furthest right/left points of the objects in the image. Analogously for `_vertical`.
+
+        `non-hero_area`
+            The *percentage* of the image area that is not *in the smallest rectangle* containing the main product (i.e., the hero).
+
     Parameters
     ----------
     label_path : str
@@ -102,7 +194,6 @@ def supervisely_to_df(label_path, agg_only=True):
     -------
     df_labels : pd.DataFrame
         The output is a Pandas Dataframe containing imaging analysis and scores for use in the near future.
-
     '''
     filepaths = glob(label_path + "/**")
 

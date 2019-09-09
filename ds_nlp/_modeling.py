@@ -108,6 +108,20 @@ class Dirichlet(object):
 class W2V_pretrained(object):
 
     def __init__(self, word_vectors=None, download=False, word_vector_library='word2vec-google-news-300'):
+        '''
+        Download or use preloaded word vectors using Gensim's installer.
+
+        Note: Right now, only have functionality to download; might eventually use this for other work (e.g., transfer learning).
+
+        Parameters
+        ----------
+        word_vectors : optional
+            Preloaded word vectors
+        download : bool
+            Download from the `word_vector_library`, recognizable by gensim.
+        word_vector_library : str
+            gensim word vector library
+        '''
         self.word_vectors = word_vectors
 
         if download:

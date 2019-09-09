@@ -6,21 +6,25 @@ from matplotlib.patches import Rectangle
 
 def show_image(img, gray=False):
     '''
-    The image needs to be a url, or it needs to be an array. If it's a file, you can use (from skimage)
+    Show an image in matplotlib fashion given some array image.
 
-    image_io = skimage.io.imread(IMAGE_PATH)
+    Examples:
+    image_io = skimage.io.imread(FILEPATH)
+    fig, axis = show_image(image_io)
 
     Parameters
     ----------
-    img
-    gray
+    img : str
+        The name of a file or full url pointing to the iamge you'd like to plot.
+    gray : bool (Default: False)
+        Whether to plot the image in grayscale or not.
 
     Returns
     -------
-
+    *tuple*: (plt.Figure, plt.Axes.axis)
     '''
     if not hasattr(img, 'shape'):
-        img = url_to_image(img)
+        raise ValueError("The `img` here must be an array. Use either skimage.io.imread, url_to_image, or file_to_image.")
 
     fig, axis = plt.subplots(1)
 
@@ -33,14 +37,49 @@ def show_image(img, gray=False):
     return fig, axis
 
 
-def multiplot_img(urls, n_cols=3, figsize=(22, 22), titles=None, fontsize=18):
-    n_rows = int(np.ceil(len(urls) / n_cols))
+def multiplot_img(files=None, urls=None, url_prefix='https://images-na.ssl-images-amazon.com/images/I/',
+                  n_cols=3, figsize=(22, 22), titles=None, fontsize=18):
+    '''
+    Plot multiple images in one frame (many axes, one figure).
+
+    Parameters
+    ----------
+    files : list
+        The *filepaths* to the images (.png, .jpg, etc. files)
+    urls : list
+        The list of urls (or url suffixes/filenames) to the images. If these do not have 'http' in the strings, then the function will use the
+        `url_prefix` as the prefix for the url.
+    n_cols : int
+        The number of columns to plot.
+    figsize : tuple
+        Figure size
+    titles : list (same length as `files` or `urls`)
+        These are the titles corresponding to each image in `files` or `urls`
+    fontsize : int
+        Font sze for each axis in the figure
+
+    Returns
+    -------
+    (matplotlib.pyplot.Figure) The figure with the plots.
+
+    '''
+    if urls is not None:
+        images = urls
+    elif files is not None:
+        images = files
+    else:
+        raise ValueError("You need to have files or urls of images to plot ...")
 
     fig = plt.figure(figsize=figsize)
+    n_rows = int(np.ceil(len(images) / n_cols))
 
-    for i, url in enumerate(urls):
+    for i, image in enumerate(images):
         ax = fig.add_subplot(n_rows, n_cols, i + 1)
-        ax.imshow(url_to_image(url))
+        if urls is not None:
+            ax.imshow(url_to_image(image, url_prefix))
+        else:
+            ax.imshow(file_to_image(image))
+
         if titles is not None:
             ax.set_title(titles[i], fontsize=fontsize)
         plt.grid(None)
@@ -51,6 +90,36 @@ def multiplot_img(urls, n_cols=3, figsize=(22, 22), titles=None, fontsize=18):
 
 
 def plot_rectangle(axis, lower_left_point, width, height, ls='--', lw=3, color='red', fill=False, label=None):
+    '''
+    Plot a rectangle over an axis.
+
+    Parameters
+    ----------
+    axis : matplotlib axis
+        The axis to plot the rectangle on.
+    lower_left_point : tuple
+        A tuple containing the coordinates for the *lower left* point of the rectangle you'd like to plot.
+    width : float
+        See matplotlib.patches.Rectangle
+    height : float
+        See matplotlib.patches.Rectangle
+    ls : str
+        See matplotlib.patches.Rectangle
+    lw : int
+        See matplotlib.patches.Rectangle
+    color : str
+        See matplotlib.patches.Rectangle
+    fill : bool
+        See matplotlib.patches.Rectangle
+    label : str, or None
+        See matplotlib.patches.Rectangle
+
+    Returns
+    -------
+    *Nothing*
+
+    Just plot the rectangle on the axis provided.
+    '''
     x = lower_left_point[0]
     y = lower_left_point[1]
 
@@ -59,6 +128,24 @@ def plot_rectangle(axis, lower_left_point, width, height, ls='--', lw=3, color='
 
 
 def show_imagely(image_id, df_labels, colors=('red', 'orange', 'blue', 'pink', 'yellow'), show_3grid=False):
+    '''
+    Plot labeled images from Supervise.ly along with rectangles containing objects.
+
+    Parameters
+    ----------
+    image_id : str
+        Image ID corresponding to an 'image_id' from the Supervise.ly output
+    df_labels : pd.DataFrame
+        The dataframe output from `supervisely_to_df`
+    colors : list of strings
+        The colors (in order of items in df_labels['object_titles']) that you'd like to use in plotting the objects in the image with `image_id`.
+    show_3grid : bool
+        Show the 3 x 3 grid of lines over the image
+
+    Returns
+    -------
+    matplotlib.Figure, matplotlib.Axes
+    '''
     df_ = df_labels[df_labels['object_titles'].apply(len) > 0]
     items = df_[df_.image_id == image_id]['object_titles'].iloc[0]
     colors = list(colors)[:len(items)]
