@@ -12,7 +12,7 @@ import re
 
 
 def mytokenizer(text, remove_stops=True, stop_words='med', stemming='snowball', drop_puncnums=True, stem=True,
-                keep_puncs='', tokensonly=True):
+                otherpunc='', keep_puncs='', tokensonly=True):
     '''
     This is a custom tokenizer. We make tokens in this order:
         1) Remove URLs (this is unchangeable),
@@ -25,8 +25,8 @@ def mytokenizer(text, remove_stops=True, stop_words='med', stemming='snowball', 
     high-quality word vectors'. You can try both -- see what happens.
     :param text: str, This is the text string to be cleaned and tokenized.
     :param remove_stops: bool, Just decide if you want to remove stop words or not. Default is True
-    :param stop_words: str, in ('nltk', 'short', 'med', or 'long'). The 'nltk' stopwords are the default NLTK ones,
-    and the others come from www.ranks.nl. short/med/long refers to the amount of stopwords in the list.
+    :param stop_words: str, in ('nltk', 'google', 'ranksnl'). The 'nltk' stopwords are the default NLTK ones,
+    and the others come from www.ranks.nl (google, by way of). The Google list is by far the longest.
     :param stemming: str, in ('snowball', 'porter', or 'lancaster')
     :param drop_puncnums: bool, Self-explanatory. (drop the punctuation and the numbers)
     :param stem: bool, Self-explanatory.
@@ -35,10 +35,10 @@ def mytokenizer(text, remove_stops=True, stop_words='med', stemming='snowball', 
     only have cleaned up the number sand punctuation.
     '''
 
-    with open(f'{ROOT_PATH[0]}/data/punc.txt', 'r') as f:
-        otherpunc = f.readlines()
-
-    otherpunc = ''.join(set([x.strip() for x in otherpunc]))
+    # with open(f'{ROOT_PATH[0]}/data/punc.txt', 'r') as f:
+    #     otherpunc = f.readlines()
+    #
+    # otherpunc = ''.join(set([x.strip() for x in otherpunc]))
     punctuation = otherpunc + string.punctuation
     punctuation = ''.join([x for x in punctuation if x not in list(keep_puncs)])
 
@@ -64,18 +64,13 @@ def mytokenizer(text, remove_stops=True, stop_words='med', stemming='snowball', 
         if stop_words == 'nltk':
             stop_words = stopwords.words('english')
 
-        if stop_words == 'short':
-            with open(f'{ROOT_PATH[0]}/data/stopwords_short.txt', 'r') as f:
+        if stop_words == 'google':
+            with open(f'{ROOT_PATH[0]}/data/sw_google.txt', 'r') as f:
                 stop_words = f.readlines()
                 stop_words = [word.strip() for word in stop_words]
 
-        if stop_words == 'med':
-            with open(f'{ROOT_PATH[0]}/data/stopwords_med.txt', 'r') as f:
-                stop_words = f.readlines()
-                stop_words = [word.strip() for word in stop_words]
-
-        if stop_words == 'long':
-            with open(f'{ROOT_PATH[0]}/data/stopwords_long.txt', 'r') as f:
+        if stop_words == 'ranksnl':
+            with open(f'{ROOT_PATH[0]}/data/sw_ranksnl.txt', 'r') as f:
                 stop_words = f.readlines()
                 stop_words = [word.strip() for word in stop_words]
 
