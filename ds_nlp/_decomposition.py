@@ -134,7 +134,7 @@ class TextDecomposition(object):
         doc_clusters = docspace.argmax(axis=1)
         doc_topic_max_value = docspace.max(axis=1)
 
-        self.doc_topics = list(zip(self.X.index, self.X, doc_clusters, doc_topic_max_value))
+        self.doc_topics = list(zip(range(len(self.X)), self.X, doc_clusters, doc_topic_max_value))
 
         for i, doc_topic in enumerate(
                 sorted([doc_topic for doc_topic in self.doc_topics if doc_topic[2] == topic], key=lambda x: x[3],
