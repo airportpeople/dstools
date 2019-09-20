@@ -1,4 +1,5 @@
 import os
+import re
 import pandas as pd
 import numpy as np
 from multiprocessing import Pool, current_process
@@ -134,7 +135,7 @@ def _df_load(work):
 
 
 def df_load(savedir, keep_filename=False, len_prefix=None, len_suffix=4, filename_column='filename', axis=0,
-            reset_index=True, csv_params=None, n_jobs=1):
+            reset_index=True, csv_params=None, re_pat=".*", n_jobs=1):
     '''
     Load multiple files into a Pandas DataFrame (possibly saved using `df_dump`, but not necessarily).
     
@@ -159,6 +160,8 @@ def df_load(savedir, keep_filename=False, len_prefix=None, len_suffix=4, filenam
         Whether to reset the index in the final data frame after having concatenated.
     csv_params : dict
         The parameters to send to `pd.read_csv`
+    re_pat : str
+        Regular Expression pattern to match files in the directory
     n_jobs : int
         The number of processes to run
 
@@ -176,7 +179,7 @@ def df_load(savedir, keep_filename=False, len_prefix=None, len_suffix=4, filenam
         print("There's nothing in here ...")
         return None
 
-    files = sorted([f for f in os.listdir(savedir) if f[0] != '.'])
+    files = sorted([f for f in os.listdir(savedir) if f[0] != '.' and re.match(re_pat, f)])
     if 'bycols' in files[0]:
         axis = 1
 
