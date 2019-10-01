@@ -218,9 +218,15 @@ def supervisely_to_df(label_path, agg_only=True):
     object_x2s = []
     object_y2s = []
 
+    missing_tags = []
+
     for filepath in filepaths:
         with open(filepath) as f:
             label = json.load(f)
+
+        if len(label['tags']) < 1:
+            missing_tags.append(filepath[filepath.rfind('/') + 1:])
+            continue
 
         if len(label['objects']) < 1:
             image_ids.append(filepath[filepath.rfind('/') + 1: filepath.rfind('.')])
@@ -246,6 +252,10 @@ def supervisely_to_df(label_path, agg_only=True):
             object_y1s.append(object_['points']['exterior'][0][1])
             object_x2s.append(object_['points']['exterior'][1][0])
             object_y2s.append(object_['points']['exterior'][1][1])
+
+    if len(missing_tags) > 0:
+        raise AttributeError(f"The images {missing_tags} are missing tags. Update tags in Supervise.ly, and download 'annotation' JSON to"
+                             f" {label_path}. (Remember to rename files so that '.jpg' is in-between the ASIN and '.json'.)")
 
     df_labels = pd.DataFrame({'image_id': image_ids,
                               'image_type': image_types,

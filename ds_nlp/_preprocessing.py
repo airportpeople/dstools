@@ -11,7 +11,7 @@ import string
 import re
 
 
-def mytokenizer(text, remove_stops=True, stop_words='med', stemming='snowball', drop_puncnums=True, stem=True,
+def mytokenizer(text, remove_stops=True, stop_words='nltk', stemming='snowball', drop_puncnums=True, stem=True,
                 otherpunc='', keep_puncs='', tokensonly=True):
     '''
     This is a custom tokenizer. We make tokens in this order:
@@ -60,19 +60,18 @@ def mytokenizer(text, remove_stops=True, stop_words='med', stemming='snowball', 
     clean_tokens = word_tokenize(clean_text)
 
     if remove_stops:
-
-        if stop_words == 'nltk':
-            stop_words = stopwords.words('english')
-
         if stop_words == 'google':
             with open(f'{ROOT_PATH[0]}/data/sw_google.txt', 'r') as f:
                 stop_words = f.readlines()
                 stop_words = [word.strip() for word in stop_words]
 
-        if stop_words == 'ranksnl':
+        elif stop_words == 'ranksnl':
             with open(f'{ROOT_PATH[0]}/data/sw_ranksnl.txt', 'r') as f:
                 stop_words = f.readlines()
                 stop_words = [word.strip() for word in stop_words]
+
+        else:
+            stop_words = stopwords.words('english')
 
         # Some of the lists of stopwords haven't removed the punctuation. :| (neutral face)
         stop_words = [word.translate(remove_punct) for word in stop_words]

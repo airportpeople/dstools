@@ -1,6 +1,7 @@
 from sklearn.decomposition import NMF, TruncatedSVD
 import numpy as np
 from ._preprocessing import mytokenizer, vectorize
+import pandas as pd
 
 
 class TextDecomposition(object):
@@ -29,32 +30,51 @@ class TextDecomposition(object):
         :param CountV_args: dict, Parameters and values to pass to the CountVectorizer function
         :return: None, updates X_vec, vec, and terms
         '''
-        if not Tfidf_args:
-            Tfidf_args_ = dict()
+
+        if self.X_vec is None or self.vec is None:
+            if not Tfidf_args:
+                Tfidf_args_ = dict()
+            else:
+                Tfidf_args_ = Tfidf_args
+
+            if not CountV_args:
+                CountV_args_ = dict()
+            else:
+                CountV_args_ = CountV_args
+
+            self.X_vec, self.vec = vectorize(self.X, tokenizer=tokenizer, use_tfidf=use_tfidf,
+                                             Tfidf_args=Tfidf_args_, CountV_args=CountV_args_)
+
+            self.terms = self.vec.get_feature_names()
+
         else:
-            Tfidf_args_ = Tfidf_args
+            self.terms = self.vec.get_feature_names()
+            print("Word matrix and vectorizer already set, updated/reset terms.")
 
-        if not CountV_args:
-            CountV_args_ = dict()
-        else:
-            CountV_args_ = CountV_args
-
-        self.X_vec, self.vec = vectorize(self.X, tokenizer=tokenizer, use_tfidf=use_tfidf,
-                                         Tfidf_args=Tfidf_args_, CountV_args=CountV_args_)
-        self.terms = self.vec.get_feature_names()
-
-    def fit_nmf(self, n=10, modelargs=None):
+    def fit_nmf(self, n=10, modelargs=None, re_pat=None):
         '''
         Fit an NMF model to the X_vec (vectorized doc-term matrix). By default, this is initialized with 'nndsvd'.
         :param n: int, Number of components
         :param modelargs: dict, other parameters to send to the sklearn.NMF model
         :return: None, updates the nmf_docspace and nmf_termspace.
         '''
-        if not modelargs:
-            modelargs = {}
 
-        self.nmf = NMF(n_components=n, init='nndsvd', **modelargs)
-        self.nmf_docspace = self.nmf.fit_transform(self.X_vec)
+        if self.nmf is None:
+            if not modelargs:
+                modelargs = {}
+
+            self.nmf = NMF(n_components=n, init='nndsvd', **modelargs)
+
+        if re_pat is not None:
+            terms = pd.Series(self.terms)
+            mask = terms.str.contains(re_pat, regex=True)
+            self.terms = terms[mask]
+            X_vec = self.X_vec[mask]
+
+        else:
+            X_vec = self.X_vec
+
+        self.nmf_docspace = self.nmf.fit_transform(X_vec)
         self.nmf_termspace = self.nmf.components_
 
     def fit_svd(self, n=20, modelargs=None):
