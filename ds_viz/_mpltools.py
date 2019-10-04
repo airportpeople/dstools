@@ -23,6 +23,19 @@ def multiplot(plotters, params, n_cols=3, figsize=(22, 22), fig_filename=None):
         params = [{'x': 'variable',
                    'y': col,
                    'data': df[df[col] != 0]} for col in columns]
+
+    Alternatively, you can use this framework:
+
+        fig = plt.figure(figsize=figsize)
+        n_rows = int(np.ceil(len(groups) / n_cols))
+
+        for i, group in enumerate(groups):
+            axis = fig.add_subplot(n_rows, n_cols, i + 1)
+            sns.someplot(df[df[grouping_col] == group][value_col], label=group, ax=axis)
+            axis.set_title(...)
+
+        fig.tight_layout()
+
     params
     n_cols
     figsize
