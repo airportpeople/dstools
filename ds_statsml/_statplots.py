@@ -446,10 +446,7 @@ def diagnose_logr(model, X, y_true, factor, thresh=0.5, hasconst=True):
 
 def ROC(model, X_test, y_test, lw=2):
 
-    if hasattr(model, 'predict_proba'):
-        y_score = model.predict_proba(X_test)
-    else:
-        y_score = model.predict(X_test)
+    y_score = model.predict(X_test)
     fpr, tpr, _ = roc_curve(y_test, y_score)
     roc_auc = auc(fpr, tpr)
 

@@ -10,7 +10,7 @@ def get_iplot_text(data, names=None, round_digits=2):
         if hasattr(data_, 'columns'):
             names = data_.columns.tolist()
             num_cols = [col for col in names if data_[col].dropna().shape[0] > 0 and
-                        str(data_[col].dropna().iloc[0]).replace(".", "").replace("-", '').replace("e", '').isnumeric()]
+                        isinstance(data_[col].dropna().iloc[0], int) or isinstance(data_[col].dropna().iloc[0], float)]
             data_[num_cols] = data_[num_cols].round(round_digits)
             data_ = data_.values
 
@@ -18,7 +18,7 @@ def get_iplot_text(data, names=None, round_digits=2):
             names = [f'var{i + 1}' for i in range(data_.shape[1])]
             data_ = pd.DataFrame(columns=names, data=data_)
             num_cols = [col for col in names if data_[col].dropna().shape[0] > 0 and
-                        str(data_[col].dropna().iloc[0]).replace(".", "").replace("-", '').replace("e", '').isnumeric()]
+                        isinstance(data_[col].dropna().iloc[0], int) or isinstance(data_[col].dropna().iloc[0], float)]
             data_[num_cols] = data_[num_cols].round(round_digits)
             data_ = data_.values
 
