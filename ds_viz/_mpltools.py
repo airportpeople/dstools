@@ -1,13 +1,20 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.ticker import FormatStrFormatter
 
 
-def cleanup_xaxis(axis, stepsize, rotation):
+def cleanup_xaxis(axis, stepsize, rotation, round_x=None, round_y=None):
     start, end = axis.get_xlim()
     axis.xaxis.set_ticks(np.arange(start, end, stepsize))
 
     for tick in axis.get_xticklabels():
         tick.set_rotation(rotation)
+
+    if round_x is not None:
+        axis.xaxis.set_major_formatter(FormatStrFormatter(f'%.{round_x}f'))
+
+    if round_y is not None:
+        axis.yaxis.set_major_formatter(FormatStrFormatter(f'%.{round_y}f'))
 
     return axis
 

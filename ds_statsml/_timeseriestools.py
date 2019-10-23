@@ -89,12 +89,13 @@ def plot_fourier(df, series=4, m=4, freqs=None, scale_amp=True, figsize=(10, 10)
     return fig, axes
 
 
-def get_fourier(a):
+def get_fourier(a, axis=-1):
 
+    a = np.array(a)
     N = a.shape[-1]
 
     # Then, we'll get the coefficients in the transformed Fourier Space, these are complex values (e.g., a + ib)
-    A_full = np.fft.fft(a)
+    A_full = np.fft.fft(a, axis=axis)
 
     # The magnitudes of A_full are the amplitudes, and the phase (offset) is the angle of the complex value
     A_amp = np.abs(A_full)

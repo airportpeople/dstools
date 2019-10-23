@@ -13,7 +13,7 @@
 *.html
 *.iml
 .idea/
-__pycache__/
+__pycache__
 data/
 tblogs/
 *.DS_Store
