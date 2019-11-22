@@ -18,7 +18,7 @@ import seaborn as sns
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
 import plotly.express as px
-# %matplotlib inline
+%matplotlib inline
 
 # Barchart: `fig = go.Figure(data=go.Bar(y=[2, 3, 1]))`
 # Scatter Plot: `fig = px.scatter(df, x="var1", y="var2")`
