@@ -7,7 +7,7 @@ from pandas.tseries.holiday import USFederalHolidayCalendar, Holiday, SU, MO, TU
 from pandas.tseries.offsets import DateOffset
 from sklearn.utils import column_or_1d
 from ._timeseriestools import get_fourier, get_consecutive
-from ds_util import define_bins
+from dstools.ds_util import define_bins
 from multiprocessing import current_process
 
 

@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import os
-import lightgbm as lgb
 from ._alt_metrics import *
 from ._stattools import StatsmodelSKLearn
 from sklearn.preprocessing import minmax_scale
@@ -175,15 +174,17 @@ def tss_gridsearch(X, y, model_instance, param_grid=None, n_splits=5, overlap=0.
     splitpoint = int(X.shape[0] * train_size)
 
     X_train, y_train = X[:splitpoint], y[:splitpoint]
-    X_test, y_test = X[splitpoint:], y[splitpoint:]
+    # X_test, y_test = X[splitpoint:], y[splitpoint:]
 
-    if isinstance(model_instance, lgb.sklearn.LGBMClassifier) or isinstance(model_instance, lgb.sklearn.LGBMRegressor):
-        if 'early_stopping_round' in param_grid.keys():
-            fit_params = {'eval_set': [(X_test, y_test)], 'eval_names': ['Eval']}
-        else:
-            fit_params = {}
-    else:
-        fit_params = {}
+    # if isinstance(model_instance, lgb.sklearn.LGBMClassifier) or isinstance(model_instance, lgb.sklearn.LGBMRegressor):
+    #     if 'early_stopping_round' in param_grid.keys():
+    #         fit_params = {'eval_set': [(X_test, y_test)], 'eval_names': ['Eval']}
+    #     else:
+    #         fit_params = {}
+    # else:
+    #     fit_params = {}
+
+    fit_params = {}
 
     grid_est.fit(X_train, y_train, **fit_params)
 

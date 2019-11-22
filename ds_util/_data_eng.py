@@ -333,5 +333,6 @@ def flatten_multilevel_cols(df, separator="|", inplace=False):
     new_columns = [separator.join(col) for col in df.columns.values]
     if inplace:
         df.columns = new_columns
+        return None
 
     return new_columns

@@ -114,13 +114,7 @@ def silhouette_plots(X, clusterer=MiniBatchKMeans, param_dict=None, fitted_clust
         fig, (ax1, ax2) = plt.subplots(1, 2)
         fig.set_size_inches(18, 7)
 
-        # The 1st subplot is the silhouette plot
-        # The silhouette coefficient can range from -1, 1 but in this example all
-        # lie within [-0.1, 1]
-        ax1.set_xlim([-0.1, 1])
-
-        # Initialize the clusterer with n_clusters value and a random generator
-        # seed of 10 for reproducibility.
+        # Initialize the clusterer
         if clusterers_labels is None:
             cluster_labels = fitted_clusterer.predict(X)
 
@@ -128,22 +122,29 @@ def silhouette_plots(X, clusterer=MiniBatchKMeans, param_dict=None, fitted_clust
             cluster_labels = clusterers_labels[i]
 
         n_clusters = len(set(cluster_labels))
-        # The (n_clusters+1)*10 is for inserting blank space between silhouette
-        # plots of individual clusters, to demarcate them clearly.
-        ax1.set_ylim([0, len(X) + (n_clusters + 1) * 10])
 
         # The silhouette_score gives the average value for all the samples.
         # This gives a perspective into the density and separation of the formed
         # clusters
-        silhouette_avg = silhouette_score(X, cluster_labels)
-        print("For", params, ", the average silhouette_score is :", silhouette_avg)
+        if 1 < n_clusters < X.shape[0]:
+            silhouette_avg = silhouette_score(X, cluster_labels)
+            print(f"For {params}, the average silhouette_score is :", silhouette_avg)
+        else:
+            print(f"For {params}, silhouette_score cannot be calculated. ", end="")
+            print(f"n_clusters, {n_clusters}, is outside [2, n_samples].")
+            continue
 
         # Compute the silhouette scores for each sample
         sample_silhouette_values = silhouette_samples(X, cluster_labels)
 
+        # Define the silhouettes by the scores in the sample (range between -1 and 1)
+        ax1.set_xlim([np.min(sample_silhouette_values), np.max(sample_silhouette_values)])
+
+        # The (n_clusters + 1) * 10 is for a blank space between silhouettes (for clear demarcation)
+        ax1.set_ylim([0, len(X) + (n_clusters + 1) * 10])
         y_lower = 10
 
-        for i in range(n_clusters):
+        for i in np.unique(cluster_labels):
             # Aggregate the silhouette scores for samples belonging to
             # cluster i, and sort them
             ith_cluster_silhouette_values = \
@@ -173,7 +174,10 @@ def silhouette_plots(X, clusterer=MiniBatchKMeans, param_dict=None, fitted_clust
         ax1.axvline(x=silhouette_avg, color="red", linestyle="--")
 
         ax1.set_yticks([])  # Clear the yaxis labels / ticks
-        ax1.set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
+        # Add a clean set of xtick labels
+        ax1.set_xticks(np.linspace(np.min(sample_silhouette_values),
+                                   np.max(sample_silhouette_values),
+                                   10).round(1))
 
         # 2nd Plot showing the actual clusters formed
         colors = cm.nipy_spectral(cluster_labels.astype(float) / n_clusters)
@@ -184,11 +188,12 @@ def silhouette_plots(X, clusterer=MiniBatchKMeans, param_dict=None, fitted_clust
         ax2.scatter(X_show[:, 0], X_show[:, 1], marker='.', s=30, lw=0, alpha=0.7,
                     c=colors, edgecolor='k')
 
-        # Labeling the clusters
+        # Getting cluster centers from the data passed in
         if hasattr(fitted_clusterer, 'cluster_centers_'):
             centers = fitted_clusterer.cluster_centers_
         else:
-            centers = np.array([X[fitted_clusterer.labels_ == i].mean(axis=0) for i in range(n_clusters)])
+            centers = np.array([X[fitted_clusterer.labels_ == i].mean(axis=0)
+                                for i in np.unique(fitted_clusterer.labels_)])
 
         centers_show = pca.transform(centers)
 
@@ -214,7 +219,13 @@ class ClusterComparison(object):
     def __init__(self, n_jobs=6, cl_algos_params=None):
         '''
         Get information about different clustering algorithms on data. Possible algorithms are 'AffinityProp', 'Agglomerative', 'Birch', 'DBSCAN',
-        'Agglomerative_features', 'KMeans_minibatch', 'MeanShift', and 'Spectral'.
+        'Agglomerative_features', 'KMeans_minibatch', 'MeanShift', and 'Spectral'. An example use could be:
+
+            cluster_params = {'KMeans_minibatch': {'n_clusters': [4, 8, 12]},
+                  'DBSCAN': {'metric': ['cosine', 'euclidean', 'l1']},
+                  'Spectral': {'n_clusters': [4, 8, 12]}}
+
+
         :param n_jobs:
         :param cl_algos_params:
         '''
@@ -232,7 +243,8 @@ class ClusterComparison(object):
                            'Agglomerative_features': FeatureAgglomeration,
                            'KMeans_minibatch': MiniBatchKMeans,
                            'MeanShift': MeanShift,
-                           'Spectral': SpectralClustering}
+                           'Spectral': SpectralClustering,
+                           'OPTICS': OPTICS}
 
     def fit(self, X_df):
 
@@ -242,12 +254,14 @@ class ClusterComparison(object):
 
         for algo_name in self.cl_algos_params.keys():
 
-            print(f'\n**Training {algo_name}...**')
+            print(f'\n**Training {algo_name} ...**')
 
-            for i, params in enumerate(ParameterGrid(self.cl_algos_params[algo_name])):
+            pgrid = ParameterGrid(self.cl_algos_params[algo_name])
 
-                print(f'\t**Using parameter setting {i} ...**')
-                if algo_name in ['DBSCAN', 'MeanShift', 'Spectral']:
+            for i, params in enumerate(pgrid):
+
+                print(f'\t**Using parameter setting {i+1} of {len(pgrid)} ...**')
+                if algo_name in ['DBSCAN', 'MeanShift', 'Spectral', 'OPTICS']:
                     params['n_jobs'] = self.n_jobs
 
                 cl_algo = self.cl_algos_all[algo_name](**params)
