@@ -144,7 +144,7 @@ def silhouette_plots(X, clusterer=MiniBatchKMeans, param_dict=None, fitted_clust
         ax1.set_ylim([0, len(X) + (n_clusters + 1) * 10])
         y_lower = 10
 
-        for i in np.unique(cluster_labels):
+        for i_, i in enumerate(np.unique(cluster_labels)):
             # Aggregate the silhouette scores for samples belonging to
             # cluster i, and sort them
             ith_cluster_silhouette_values = \
@@ -155,7 +155,7 @@ def silhouette_plots(X, clusterer=MiniBatchKMeans, param_dict=None, fitted_clust
             size_cluster_i = ith_cluster_silhouette_values.shape[0]
             y_upper = y_lower + size_cluster_i
 
-            color = cm.nipy_spectral(float(i) / n_clusters)
+            color = cm.nipy_spectral(float(i_) / n_clusters)
             ax1.fill_betweenx(np.arange(y_lower, y_upper),
                               0, ith_cluster_silhouette_values,
                               facecolor=color, edgecolor=color, alpha=0.7)
@@ -188,12 +188,14 @@ def silhouette_plots(X, clusterer=MiniBatchKMeans, param_dict=None, fitted_clust
         ax2.scatter(X_show[:, 0], X_show[:, 1], marker='.', s=30, lw=0, alpha=0.7,
                     c=colors, edgecolor='k')
 
+        fitted_clusterer_labels = sorted(np.unique(fitted_clusterer.labels_))
+
         # Getting cluster centers from the data passed in
         if hasattr(fitted_clusterer, 'cluster_centers_'):
             centers = fitted_clusterer.cluster_centers_
         else:
             centers = np.array([X[fitted_clusterer.labels_ == i].mean(axis=0)
-                                for i in np.unique(fitted_clusterer.labels_)])
+                                for i in fitted_clusterer_labels])
 
         centers_show = pca.transform(centers)
 
@@ -201,7 +203,7 @@ def silhouette_plots(X, clusterer=MiniBatchKMeans, param_dict=None, fitted_clust
         ax2.scatter(centers_show[:, 0], centers_show[:, 1], marker='o',
                     c="white", alpha=1, s=200, edgecolor='k')
 
-        for i, c in enumerate(centers_show):
+        for i, c in zip(fitted_clusterer_labels, centers_show):
             ax2.scatter(c[0], c[1], marker='$%d$' % i, alpha=1,
                         s=50, edgecolor='k')
 
