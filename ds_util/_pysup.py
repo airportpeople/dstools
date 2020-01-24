@@ -1,6 +1,8 @@
 import os
 import sys
 from sklearn.model_selection import KFold
+from collections import Counter
+from copy import deepcopy
 
 try:
     # In case we're in the tensorflow environment
@@ -116,3 +118,17 @@ def get_array_batches(a, max_batch_size=4):
     cv = KFold(n_splits=int(np.ceil(len(a) / max_batch_size)))
 
     return [list(a[x[1]]) for x in cv.split(a)]
+
+
+def numerate_dupes(x):
+    e_counts = dict(Counter(x))
+    ooms = {e: int(np.floor(np.log10(e_counts[e]))) for e in x}
+    x_num = deepcopy(x)
+    duplicates = {k: 0 for k in x}
+
+    for i, e in enumerate(x):
+        if e_counts[e] > 1:
+            duplicates[e] += 1
+            x_num[i] = e + str(duplicates[e]).zfill(ooms[e] + 1)
+
+    return x_num
