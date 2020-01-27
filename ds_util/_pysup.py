@@ -1,5 +1,7 @@
 import os
 import sys
+import re
+import string
 from sklearn.model_selection import KFold
 from collections import Counter
 from copy import deepcopy
@@ -132,3 +134,17 @@ def numerate_dupes(x):
             x_num[i] = e + str(duplicates[e]).zfill(ooms[e] + 1)
 
     return x_num
+
+
+def make_column_names(strings):
+    remove_punct = str.maketrans('', '', string.punctuation)
+    cols = [x.lower().translate(remove_punct).replace(' ', '_') for x in strings]
+    cols = numerate_dupes(cols)
+    return cols
+
+
+def glob_re(filepattern, dirpath, fullpath=True):
+    if fullpath:
+        return [dirpath + '/' + f for f in filter(re.compile(filepattern).match, os.listdir(dirpath))]
+    else:
+        return filter(re.compile(filepattern).match, os.listdir(dirpath))
