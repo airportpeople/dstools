@@ -2,6 +2,8 @@ import os
 import sys
 import re
 import string
+import pandas as pd
+import numpy as np
 from sklearn.model_selection import KFold
 from collections import Counter
 from copy import deepcopy
@@ -137,7 +139,7 @@ def numerate_dupes(x):
 
 
 def make_column_names(strings):
-    remove_punct = str.maketrans('', '', string.punctuation)
+    remove_punct = str.maketrans('', '', string.punctuation.replace('_', ''))
     cols = [x.lower().translate(remove_punct).replace(' ', '_') for x in strings]
     cols = numerate_dupes(cols)
     return cols
@@ -148,3 +150,14 @@ def glob_re(filepattern, dirpath, fullpath=True):
         return [dirpath + '/' + f for f in filter(re.compile(filepattern).match, os.listdir(dirpath))]
     else:
         return filter(re.compile(filepattern).match, os.listdir(dirpath))
+
+
+def hist_data(a, n_bins, kws=None):
+    if kws is None:
+        kws = {}
+
+    hist_data = np.histogram(a, bins=n_bins, **kws)
+    hist_data = pd.DataFrame(data=zip(hist_data[1], hist_data[0]),
+                             columns=['bin_edges', 'values'])
+
+    return hist_data

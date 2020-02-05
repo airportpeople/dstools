@@ -10,7 +10,7 @@ table_names = []
 num_subtables = []
 
 
-def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklprotocol=-1, maxrows=np.inf, csv_params=None, csv=False,
+def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklprotocol=-1, maxrows=1e6, csv_params=None, csv=False,
             overwrite=False):
     '''
     Save a large dataframe as multiple files based on the maximum number of rows, by groups, or the maximum (in buffer) dataframe size.
@@ -84,7 +84,7 @@ def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklp
 
         return None
 
-    print('Dumping files ...')
+    print(f'Dumping {n_batches} files ...')
     for i in range(n_batches):
         if i == n_batches - 1:
             if axis == 0:
@@ -135,7 +135,7 @@ def _df_load(work):
 
 
 def df_load(savedir, keep_filename=False, len_prefix=None, len_suffix=4, filename_column='filename', axis=0,
-            reset_index=True, csv_params=None, re_pat=".*", n_jobs=1):
+            reset_index=True, csv_params=None, re_pat=".*", n_jobs=1, concat_sort=None):
     '''
     Load multiple files into a Pandas DataFrame (possibly saved using `df_dump`, but not necessarily).
     
@@ -202,7 +202,7 @@ def df_load(savedir, keep_filename=False, len_prefix=None, len_suffix=4, filenam
             dfs = p.map(_df_load, allwork)
 
     print('Concatenating files into dataframe ...')
-    df = pd.concat(dfs, axis=axis, sort=True)
+    df = pd.concat(dfs, axis=axis, sort=concat_sort)
 
     if reset_index:
         df.reset_index(inplace=True, drop=True)
@@ -311,7 +311,7 @@ def clean_json(raw_, prev_key='', idx_separator='__'):
     return raw_
 
 
-def flatten_multilevel_cols(df, separator="|", inplace=False):
+def flatten_multilevel_cols(df, separator="_", inplace=False):
     '''
     Get a single level of columns from pandas MultiIndex columns.
 
