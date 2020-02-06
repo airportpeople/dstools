@@ -5,7 +5,7 @@ import scipy.stats as stats
 from itertools import combinations
 from multiprocessing import current_process, Pool
 from sklearn.base import BaseEstimator, TransformerMixin, RegressorMixin
-from sklearn.preprocessing import Imputer
+from sklearn.impute import SimpleImputer
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 
@@ -69,7 +69,7 @@ class ReduceVIF(BaseEstimator, TransformerMixin):
         # By default we impute using the median value.
         # This imputation could be taken out and added as part of an sklearn Pipeline.
         if impute:
-            self.imputer = Imputer(strategy=impute_strategy)
+            self.imputer = SimpleImputer(strategy=impute_strategy)
 
     def fit(self, X):
         print('ReduceVIF fit')
