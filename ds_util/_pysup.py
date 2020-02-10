@@ -7,6 +7,7 @@ import numpy as np
 from sklearn.model_selection import KFold
 from collections import Counter
 from copy import deepcopy
+from glob import glob
 
 try:
     # In case we're in the tensorflow environment
@@ -147,9 +148,15 @@ def make_column_names(strings):
 
 def glob_re(filepattern, dirpath, fullpath=True):
     if fullpath:
-        return [dirpath + '/' + f for f in filter(re.compile(filepattern).match, os.listdir(dirpath))]
+        filepaths = [f for f in glob(dirpath + "/**", recursive=True) if not os.path.isdir(f)]
+
+        def filter_func(f):
+            return re.compile(filepattern).match(f[max(f.rfind('/'), f.rfind('\\')) + 1:])
+
+        return list(filter(filter_func, filepaths))
+
     else:
-        return filter(re.compile(filepattern).match, os.listdir(dirpath))
+        return list(filter(re.compile(filepattern).match, os.listdir(dirpath)))
 
 
 def hist_data(a, n_bins, kws=None):
