@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import KFold
 from collections import Counter
+from itertools import chain, combinations
 from copy import deepcopy
 from glob import glob
 
@@ -168,3 +169,52 @@ def hist_data(a, n_bins, kws=None):
                              columns=['bin_edges', 'values'])
 
     return hist_data
+
+
+def powerset(items):
+    '''
+    Given an iterable of items, return a generator of all possible combinations (in tuples).
+
+    For single combinations (say, groups of m), just use itertools.combinations(items, m)
+
+    Parameters
+    ----------
+    items : iterable
+        The items you'd like to get combinations for
+
+    Returns
+    -------
+    (iterable) Generator of all possible combinations in tuples
+    '''
+    s = list(items)
+    return chain.from_iterable(combinations(s, r) for r in range(len(s) + 1))
+
+
+def powerset_dataframe(items, index_name='powerset'):
+    '''
+    Given an iterable of items, return a Pandas DataFrame with the items as columns, and True or False for values.
+    Add a column (named `index_name`) indexing the powersets. So, row i (`index_name` == i), column m is True if
+    column m is in powerset i.
+
+    Parameters
+    ----------
+    items : iterable
+        The items to get combinations for
+    index_name : str
+        The name of the column indexing combinations
+
+    Returns
+    -------
+    (pandas.DataFrame) The dataframe containing combinations
+
+    '''
+    item_combinations = []
+    for group in powerset(items):
+        item_combinations.append({g: True for g in group})
+
+    df_powersets = pd.DataFrame(item_combinations)
+    df_powersets.fillna(False, inplace=True)
+    df_powersets.reset_index(inplace=True)
+    df_powersets.rename(columns={'index': index_name}, inplace=True)
+
+    return df_powersets
