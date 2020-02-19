@@ -218,3 +218,14 @@ def powerset_dataframe(items, index_name='powerset'):
     df_powersets.rename(columns={'index': index_name}, inplace=True)
 
     return df_powersets
+
+
+def cumulative_count_new(x):
+    items = set()
+    cum_counts = []
+
+    for x_ in x:
+        items.update(x_)
+        cum_counts.append(len(items))
+
+    return cum_counts
