@@ -16,6 +16,7 @@
 - Keep environments named by global projects (e.g., company names of clients).
 - **Install Snowflake on a separate environment**
 - [Always use conda install when possible](https://www.anaconda.com/using-pip-in-a-conda-environment/)
+- Don't forget [this](http://scipy-lectures.org/intro/language/reusing_code.html) article! Remember **Put everything in functions in modules, THEN call those functions in a script. KEEP FUNCTIONS AS LOW LEVEL AS POSSIBLE.**
 
 ## Set up new (conda) environment
 
@@ -31,4 +32,7 @@
 
 To see all kernels, `jupyter kernelspec list`.
 To remove a kernel `jupyter kernelspec remove <myenv>`.
+
+## Remote Connecting
+Windows: `nslookup` to find IP address and computer name, Unix `ifconfig`
 
