@@ -2,7 +2,6 @@ import urllib
 import pyodbc
 import os
 import pandas as pd
-import numpy as np
 from sqlalchemy import create_engine
 
 
@@ -34,7 +33,7 @@ class SQLConnection(object):
                                          user=username,
                                          password=password)
 
-    def upload_df(self, df, target_table, schema='dbo', if_table_exists='fail', to_sql_kws=None, force_string=False):
+    def upload_df(self, df, target_table, schema='dbo', if_table_exists='fail', to_sql_kws=None, preprocess_func=None):
         '''
         Upload a pandas DataFrame into a SQL database.
 
@@ -51,6 +50,8 @@ class SQLConnection(object):
 
         to_sql_kws : dict
 
+        preprocess_func : function
+
         Returns
         -------
 
@@ -66,13 +67,8 @@ class SQLConnection(object):
         db_url = urllib.parse.quote_plus(db_url)
         engine = create_engine(f'mssql+pyodbc:///?odbc_connect={db_url}')
 
-        if force_string:
-            df = df.astype(str).replace({np.nan: 'None'})
-        
-        for col in df.columns:
-            if df[col].dtype != 'float':
-                # For non-float columns, replace the np.nan value (which is a float) with None
-                df.loc[:, col] = df[col].replace({np.nan: None})
+        if preprocess_func is not None:
+            df = preprocess_func(df)
 
         print(f"Loading table (shape {df.shape}) into {target_table}. If the table exists, {if_table_exists}.")
         df.to_sql(target_table, schema=schema, con=engine, if_exists=if_table_exists, **to_sql_kws)
@@ -110,7 +106,7 @@ class SQLConnection(object):
         return self.df_schema[(self.df_schema.table_name.str.lower().str.contains(in_table_name.lower())) &
                               (self.df_schema.column_name.str.lower().str.contains(in_column_name.lower()))]
 
-    def upload_folder(self, folder_path, target_table=None, schema='dbo', csv=True, force_string=False,
+    def upload_folder(self, folder_path, target_table=None, schema='dbo', csv=True, preprocess_func=None,
                       read_csv_kws=None, to_sql_kws=None):
         if target_table is None:
             target_table = folder_path[folder_path.rfind('/') + 1:]
@@ -127,7 +123,7 @@ class SQLConnection(object):
 
             print(f"[{i} of {len(files)}] Appending {file} to {target_table} ...")
             self.upload_df(df, target_table, schema=schema, if_table_exists='append', to_sql_kws=to_sql_kws,
-                           force_string=force_string)
+                           preprocess_func=preprocess_func)
 
     def __del__(self):
         self.connection.close()
