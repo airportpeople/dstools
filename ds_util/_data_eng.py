@@ -336,3 +336,25 @@ def flatten_multilevel_cols(df, separator="_", inplace=False):
         return None
 
     return new_columns
+
+
+def get_intact_columns(df, max_perc_missing=0.25):
+    '''
+    Given a dataframe, which columns have less than a specified amount of missing values?
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Data
+
+    max_perc_missing: float
+        Maximum acceptable proportion of NULL values in the column
+
+    Returns
+    -------
+    (list) A list of column names abiding by rule given
+    '''
+
+    column_perc_missing = df.isna().sum() / df.shape[0]
+
+    return column_perc_missing[column_perc_missing <= max_perc_missing].index.tolist()

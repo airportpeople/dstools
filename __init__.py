@@ -1,11 +1,13 @@
 import sys
 import os
+from glob import glob
+from pathlib import Path
+home = str(Path.home())
 
-sys.path.append("/Users/leonjohnson/GitStuff")
-sys.path.append("/Users/leonjohnson/GitStuff/DataScience/")
-sys.path.append("/Users/leonjohnson/GitStuff/dstools/")
-for mod in [x for x in os.listdir('.') if '.' not in x]:
-    sys.path.append(f'./{mod}')
+sys.path.append(home + '/GitStuff')
+
+for p in [x for x in glob(home + '/GitStuff/**') if '.' not in x]:
+    sys.path.append(p)
 
 # Still need to add:
 
