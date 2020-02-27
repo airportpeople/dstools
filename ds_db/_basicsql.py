@@ -34,7 +34,7 @@ class SQLConnection(object):
                                          user=username,
                                          password=password)
 
-    def upload_df(self, df, target_table, schema='dbo', if_table_exists='fail', to_sql_kws=None):
+    def upload_df(self, df, target_table, schema='dbo', if_table_exists='fail', to_sql_kws=None, force_string=False):
         '''
         Upload a pandas DataFrame into a SQL database.
 
@@ -70,6 +70,9 @@ class SQLConnection(object):
             if df[col].dtype != 'float':
                 # For non-float columns, replace the np.nan value (which is a float) with None
                 df.loc[:, col] = df[col].replace({np.nan: None})
+
+        if force_string:
+            df = df.astype(object).replace(np.nan, 'None')
 
         print(f"Loading table (shape {df.shape}) into {target_table}. If the table exists, {if_table_exists}.")
         df.to_sql(target_table, schema=schema, con=engine, if_exists=if_table_exists, **to_sql_kws)
