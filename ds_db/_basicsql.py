@@ -72,7 +72,7 @@ class SQLConnection(object):
                 df.loc[:, col] = df[col].replace({np.nan: None})
 
         if force_string:
-            df = df.astype(object).replace(np.nan, 'None')
+            df = df.astype(str).replace(np.nan, 'None')
 
         print(f"Loading table (shape {df.shape}) into {target_table}. If the table exists, {if_table_exists}.")
         df.to_sql(target_table, schema=schema, con=engine, if_exists=if_table_exists, **to_sql_kws)
