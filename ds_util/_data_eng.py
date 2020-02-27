@@ -3,9 +3,10 @@ import re
 import pandas as pd
 import numpy as np
 from multiprocessing import Pool, current_process
+from datetime import datetime
 
 
-month_map = {m: pd.datetime(year=2000, month=m, day=1).strftime('%b') for m in range(1, 13)}
+month_map = {m: datetime(year=2000, month=m, day=1).strftime('%b') for m in range(1, 13)}
 table_names = []
 num_subtables = []
 
