@@ -1,5 +1,6 @@
 import urllib
 import pyodbc
+import os
 import pandas as pd
 from sqlalchemy import create_engine
 
@@ -32,7 +33,7 @@ class SQLConnection(object):
                                          user=username,
                                          password=password)
 
-    def upload_table(self, df, target_table, schema='dbo', if_table_exists='fail'):
+    def upload_df(self, df, target_table, schema='dbo', if_table_exists='fail', to_sql_kws=None):
         '''
         Upload a pandas DataFrame into a SQL database.
 
@@ -46,6 +47,8 @@ class SQLConnection(object):
 
         if_table_exists : str
             in {'fail', 'replace', or 'append'}
+
+        to_sql_kws : dict
 
         Returns
         -------
@@ -63,10 +66,13 @@ class SQLConnection(object):
         engine = create_engine(f'mssql+pyodbc:///?odbc_connect={db_url}')
 
         print(f"Loading table (shape {df.shape}) into {target_table}. If the table exists, {if_table_exists}.")
-        df.to_sql(target_table, schema=schema, con=engine, if_exists=if_table_exists)
+        df.to_sql(target_table, schema=schema, con=engine, if_exists=if_table_exists, **to_sql_kws)
 
-    def download_table(self, query):
-        df = pd.read_sql_query(query, self.connection)
+    def download_df(self, query, read_sql_kws=None):
+        if read_sql_kws is None:
+            read_sql_kws = {}
+
+        df = pd.read_sql_query(query, self.connection, **read_sql_kws)
         return df
 
     def execute(self, sql_script):
@@ -94,6 +100,23 @@ class SQLConnection(object):
 
         return self.df_schema[(self.df_schema.table_name.str.lower().str.contains(in_table_name.lower())) &
                               (self.df_schema.column_name.str.lower().str.contains(in_column_name.lower()))]
+
+    def upload_folder(self, folder_path, target_table=None, schema='dbo', csv=True, read_csv_kws=None, to_sql_kws=None):
+        if target_table is None:
+            target_table = folder_path[folder_path.rfind('/') + 1:]
+
+        files = os.listdir(folder_path)
+
+        for i, file in enumerate(files):
+            if csv:
+                if read_csv_kws is None:
+                    read_csv_kws = {}
+                df = pd.read_csv(folder_path + '/' + file, **read_csv_kws)
+            else:
+                df = pd.read_pickle(folder_path + '/' + file)
+
+            print(f"[{i} of {len(files)}] Appending {file} to {target_table} ...")
+            self.upload_df(df, target_table, schema=schema, if_table_exists='append', to_sql_kws=to_sql_kws)
 
     def __del__(self):
         self.connection.close()
