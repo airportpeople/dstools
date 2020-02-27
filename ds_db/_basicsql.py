@@ -110,7 +110,8 @@ class SQLConnection(object):
         return self.df_schema[(self.df_schema.table_name.str.lower().str.contains(in_table_name.lower())) &
                               (self.df_schema.column_name.str.lower().str.contains(in_column_name.lower()))]
 
-    def upload_folder(self, folder_path, target_table=None, schema='dbo', csv=True, read_csv_kws=None, to_sql_kws=None):
+    def upload_folder(self, folder_path, target_table=None, schema='dbo', csv=True, force_string=False,
+                      read_csv_kws=None, to_sql_kws=None):
         if target_table is None:
             target_table = folder_path[folder_path.rfind('/') + 1:]
 
@@ -125,7 +126,8 @@ class SQLConnection(object):
                 df = pd.read_pickle(folder_path + '/' + file)
 
             print(f"[{i} of {len(files)}] Appending {file} to {target_table} ...")
-            self.upload_df(df, target_table, schema=schema, if_table_exists='append', to_sql_kws=to_sql_kws)
+            self.upload_df(df, target_table, schema=schema, if_table_exists='append', to_sql_kws=to_sql_kws,
+                           force_string=force_string)
 
     def __del__(self):
         self.connection.close()
