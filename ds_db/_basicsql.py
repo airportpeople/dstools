@@ -6,11 +6,24 @@ from sqlalchemy import create_engine
 
 class SQLConnection(object):
     def __init__(self, database, server, username, password, driver='{ODBC Driver 17 for SQL Server}'):
+        '''
+        Set up a connection between an SQL database (e.g., SQL Server) and the python instance.
+
+        Parameters
+        ----------
+        database
+        server
+        username
+        password
+        driver : str
+            Refer to the pyodbc docs for more information on this. (default: ODBC for SQL Server)
+        '''
         self.database = database
         self.server = server
         self.username = username
         self.password = password
         self.driver = driver
+        self.df_schema = None
 
         self.connection = pyodbc.connect(driver=driver,
                                          host=server,
@@ -21,7 +34,7 @@ class SQLConnection(object):
 
     def upload_table(self, df, target_table, schema='dbo', if_table_exists='fail'):
         '''
-        Upload a pandas table into a SQL database.
+        Upload a pandas DataFrame into a SQL database.
 
         Parameters
         ----------
@@ -64,6 +77,23 @@ class SQLConnection(object):
 
     def close(self):
         self.connection.close()
+
+    def get_schema(self):
+        query_schema = '''
+        SELECT 
+            TABLE_NAME AS table_name, 
+            COLUMN_NAME AS column_name
+        FROM 
+            INFORMATION_SCHEMA.COLUMNS'''
+
+        self.df_schema = pd.read_sql_query(query_schema, self.connection)
+
+    def search_schema(self, in_table_name='', in_column_name=''):
+        if self.df_schema is None:
+            self.get_schema()
+
+        return self.df_schema[(self.df_schema.table_name.str.lower().str.contains(in_table_name.lower())) &
+                              (self.df_schema.column_name.str.lower().str.contains(in_column_name.lower()))]
 
     def __del__(self):
         self.connection.close()
