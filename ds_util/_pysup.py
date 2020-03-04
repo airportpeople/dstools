@@ -229,3 +229,14 @@ def cumulative_count_new(x):
         cum_counts.append(len(items))
 
     return cum_counts
+
+
+def make_append_file(filepath=None, first_line="", add_line='', break_lines=True):
+    br = '\n' if break_lines else ''
+
+    if filepath is not None and not os.path.isfile(filepath):
+        with open(filepath, "w") as f:
+            f.write(first_line)
+
+    with open(filepath, "a") as f:
+        f.write(br + add_line)
