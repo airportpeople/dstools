@@ -11,8 +11,8 @@ import string
 import re
 
 
-def mytokenizer(text, remove_stops=True, stop_words='nltk', stemming='snowball', drop_puncnums=True, stem=True,
-                otherpunc='', keep_puncs='', tokensonly=True):
+def mytokenizer(text, remove_stops=True, stop_words='nltk', stemming='snowball', drop_punc=True,
+                drop_digits=True, stem=True, otherpunc='', keep_puncs='', tokensonly=True):
     '''
     This is a custom tokenizer. We make tokens in this order:
         1) Remove URLs (this is unchangeable),
@@ -47,12 +47,14 @@ def mytokenizer(text, remove_stops=True, stop_words='nltk', stemming='snowball',
     # Define substitution methods
     clean_text = copy(text)
     clean_text = re.sub(urlpat, '', clean_text)
+
     remove_punct = str.maketrans('', '', punctuation)
 
-    if drop_puncnums:
+    if drop_punc:
         clean_text.replace('--', ' ')
         clean_text = clean_text.translate(remove_punct)
 
+    if drop_digits:
         remove_digit = str.maketrans('', '', string.digits)
         clean_text = clean_text.translate(remove_digit)
 

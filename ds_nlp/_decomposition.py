@@ -104,12 +104,16 @@ class TextDecomposition(object):
         [2] nd.array, term clusters
         [3] nd.array, term cluster coefficients
         '''
-        docspace = self.nmf_docspace
-        termspace = self.nmf_termspace
+        if model == 'nmf':
+            docspace = self.nmf_docspace
+            termspace = self.nmf_termspace
 
-        if model == 'svd':
+        elif model == 'svd':
             docspace = self.svd_docspace
             termspace = self.svd_termspace
+
+        else:
+            raise AttributeError("Only have capability for NMF and SVD factorization for now ...")
 
         doc_clusters = docspace.argmax(axis=1)
         term_clusters = termspace.argmax(axis=0)
