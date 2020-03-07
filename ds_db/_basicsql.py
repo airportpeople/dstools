@@ -2,6 +2,7 @@ import urllib
 import pyodbc
 import os
 import pandas as pd
+import numpy as np
 from sqlalchemy import create_engine
 
 
@@ -69,6 +70,8 @@ class SQLConnection(object):
 
         if preprocess_func is not None:
             df = preprocess_func(df)
+
+        df.replace([np.nan], [None], inplace=True)
 
         print(f"Loading table (shape {df.shape}) into {target_table}. If the table exists, {if_table_exists}.")
         df.to_sql(target_table, schema=schema, con=engine, if_exists=if_table_exists, **to_sql_kws)
