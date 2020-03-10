@@ -72,7 +72,12 @@ class SQLConnection(object):
             df = preprocess_func(df)
 
         nan_values = [np.nan, '  ', ' ', '', 'null', 'nan', 'NA', '-', '--']
-        df.replace(nan_values, [None] * len(nan_values), inplace=True)
+
+        try:
+            df.replace(nan_values, [None] * len(nan_values), inplace=True)
+        except TypeError:
+            # If no strings at all in the data frame
+            df.replace([np.nan], [None], inplace=True)
 
         # Limit chunk size for SQL server ...
         if 'chunksize' in to_sql_kws.keys() and 'SQL Server' in self.driver:
