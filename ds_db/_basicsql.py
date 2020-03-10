@@ -7,7 +7,7 @@ from sqlalchemy import create_engine, VARCHAR, DATETIME, INTEGER, FLOAT
 
 
 def get_dtype(pandas_dtype):
-    if pandas_dtype in ['object', 'str', 'string']:
+    if pandas_dtype in ['object', 'str']:
         return VARCHAR
     elif pandas_dtype in ['datetime64[ns]']:
         return DATETIME
