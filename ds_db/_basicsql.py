@@ -3,16 +3,20 @@ import pyodbc
 import os
 import pandas as pd
 import numpy as np
-from sqlalchemy import create_engine, VARCHAR, DATETIME, INTEGER, FLOAT
+from sqlalchemy import create_engine, DATETIME, INTEGER, FLOAT, BIGINT, VARCHAR, BOOLEAN
 
 
 def get_dtype(pandas_dtype):
     if pandas_dtype in ['object', 'str']:
         return VARCHAR
+    elif pandas_dtype in ['bool']:
+        return BOOLEAN
     elif pandas_dtype in ['datetime64[ns]']:
         return DATETIME
-    elif pandas_dtype in ['int64', 'int32']:
+    elif pandas_dtype in ['int32']:
         return INTEGER
+    elif pandas_dtype in ['int64']:
+        return BIGINT
     elif pandas_dtype in ['float64', 'float32']:
         return FLOAT
     else:
