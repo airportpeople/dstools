@@ -66,7 +66,10 @@ class SQLConnection(object):
                    PASSWORD={self.password}"
 
         db_url = urllib.parse.quote_plus(db_url)
-        engine = create_engine(f'mssql+pyodbc:///?odbc_connect={db_url}')
+        if 'SQL Server' in self.driver or 'ODBC' in self.driver:
+            engine = create_engine(f'mssql+pyodbc:///?odbc_connect={db_url}', fast_executemany=True)
+        else:
+            engine = create_engine(f'mssql+pyodbc:///?odbc_connect={db_url}')
 
         if preprocess_func is not None:
             df = preprocess_func(df)
@@ -80,7 +83,7 @@ class SQLConnection(object):
             df.replace([np.nan], [None], inplace=True)
 
         # Limit chunk size for SQL server ...
-        if 'chunksize' in to_sql_kws.keys() and 'SQL Server' in self.driver:
+        if 'chunksize' in to_sql_kws.keys() and ('SQL Server' in self.driver or 'ODBC' in self.driver):
             df_num_of_cols = len(df.columns)
             chunksize = int(np.floor(2100 / df_num_of_cols) - 1)
             to_sql_kws['chunksize'] = min(chunksize, to_sql_kws['chunksize'])
