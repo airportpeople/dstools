@@ -359,3 +359,16 @@ def get_intact_columns(df, max_perc_missing=0.25):
     column_perc_missing = df.isna().sum() / df.shape[0]
 
     return column_perc_missing[column_perc_missing <= max_perc_missing].index.tolist()
+
+
+def get_bins(data, bin_col, bins, bin_col_name=None, inplace=True):
+    bins = bins + [data[bin_col].max() + 1]
+    labels = [str(bins[i]) + ' - ' + str(bins[i + 1]) for i in range(len(bins) - 1)]
+
+    if bin_col_name is None:
+        bin_col_name = f'{bin_col}_bin'
+
+    if inplace:
+        data[bin_col_name] = pd.cut(data[bin_col], bins=bins, labels=labels, right=False)
+    else:
+        return pd.cut(data[bin_col], bins=bins, labels=labels, right=False)
