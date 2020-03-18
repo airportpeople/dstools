@@ -361,14 +361,40 @@ def get_intact_columns(df, max_perc_missing=0.25):
     return column_perc_missing[column_perc_missing <= max_perc_missing].index.tolist()
 
 
-def get_bins(data, bin_col, bins, bin_col_name=None, inplace=True):
-    bins = bins + [data[bin_col].max() + 1]
-    labels = [str(bins[i]) + ' - ' + str(bins[i + 1]) for i in range(len(bins) - 1)]
+def get_interval_bins(series, bins, string_labels=True):
+    '''
 
-    if bin_col_name is None:
-        bin_col_name = f'{bin_col}_bin'
+    Parameters
+    ----------
+    series
+    bins : int, list
+        If int, use qcut for approximately equally sized bins (i.e., about the same number of items in each bin)
+        If list, do not include the minimum or maximum. These are the "cuts" inbetween. So,
+            bins = [5, 10, 15]  -->  [a.min(), 5), [5, 10), [10, 15), [15, a.max() + 1)
+    string_labels : bool
 
-    if inplace:
-        data[bin_col_name] = pd.cut(data[bin_col], bins=bins, labels=labels, right=False)
+    Returns
+    -------
+
+    '''
+    if isinstance(bins, int):
+        a = pd.qcut(series, bins)
+
+        if string_labels:
+            a = a.astype(str).str.strip('()[]').str.replace(',', ' -')
+
+        return a
+
+    elif isinstance(bins, list):
+        bins = [b for b in bins if series.min() < b < series.max()]
+        bins = [series.min()] + bins + [series.max() + 1]
+
+        if string_labels:
+            labels = [str(bins[i]) + ' - ' + str(bins[i + 1]) for i in range(len(bins) - 1)]
+        else:
+            labels = None
+
+        return pd.cut(series, bins=bins, labels=labels, right=False)
+
     else:
-        return pd.cut(data[bin_col], bins=bins, labels=labels, right=False)
+        raise AttributeError("`bins` must be an integer or array.")
