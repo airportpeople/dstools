@@ -1,3 +1,7 @@
+# Byte-compiled / optimized / DLL files
+*.pyc
+
+# Protected
 .DS_Store/
 *.zip
 *.csv
@@ -13,7 +17,6 @@
 *.html
 *.iml
 .idea/
-__pycache__
 data/
 tblogs/
 *.DS_Store
