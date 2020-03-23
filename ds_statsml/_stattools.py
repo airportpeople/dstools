@@ -444,3 +444,26 @@ def multi_fishers_exact(df_testing, test_group_col, target_a, target_b, within='
         results = p.map(_multi_fishers_exact, allwork)
 
     return pd.DataFrame(results)
+
+
+def smooth(y, window):
+    '''
+    Use convolution smoothing to reduce oscillations in an array, `y`, within a window of size `window`
+
+    Parameters
+    ----------
+    y : list-like
+        The array
+    window : int
+        Size of window for convolutions
+
+    Returns
+    -------
+    (np.array) Smoothed array, of the same size as y.
+    '''
+
+    y = np.array(y)
+    window = np.int(window)
+    box = np.ones(window)/window
+    y_smooth = np.convolve(y, box, mode='same')
+    return y_smooth
