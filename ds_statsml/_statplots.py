@@ -9,6 +9,7 @@ from sklearn.metrics import confusion_matrix, auc, roc_curve, r2_score, mean_abs
 from scipy import interp
 from itertools import cycle
 from ._alt_metrics import *
+from ds_statsml import smooth
 
 
 def abline(slope, intercept, color, axis=None):
@@ -667,4 +668,58 @@ def plot_compare_overtime2(series1, series2, steps, y1_label=None, y2_label=None
         tick.set_rotation(90)
 
     return fig
+
+
+def plot_series_topbottom(df_over_time,
+                          x_col,
+                          y_top_col,
+                          y_bottom_col,
+                          x_label=None,
+                          y_top_label=None,
+                          y_bottom_label=None,
+                          hue_col=None,
+                          top_smoothing=1,
+                          bottom_smoothing=1,
+                          top_legend_loc='lower right',
+                          bottom_legend_loc='lower right',
+                          savefig_path=None,
+                          savefig_kws=None,
+                          figsize=(18, 10)):
+
+    fig, axes = plt.subplots(2, 1, sharex=True)
+
+    y_top = smooth(df_over_time[y_top_col], top_smoothing)
+    y_bottom = smooth(df_over_time[y_bottom_col], bottom_smoothing)
+
+    if hue_col is None:
+        hue = None
+    else:
+        hue = df_over_time[hue_col]
+
+    sns.lineplot(x=df_over_time[x_col],
+                 y=y_top,
+                 hue=hue,
+                 ax=axes[0])
+
+    sns.lineplot(x=df_over_time[x_col],
+                 y=y_bottom,
+                 hue=hue,
+                 ax=axes[1])
+
+    fig.set_size_inches(figsize[0], figsize[1])
+
+    axes[0].set_ylabel(y_top_col if y_top_label is None else y_top_label)
+    axes[0].legend(loc=top_legend_loc)
+
+    axes[1].set_ylabel(y_bottom_col if y_bottom_label is None else y_bottom_label)
+    axes[1].legend(loc=bottom_legend_loc)
+
+    axes[1].set_xlabel(x_col if x_label is None else x_label)
+    
+    if savefig_path is not None:
+        if savefig_kws is None:
+            savefig_kws = {}
+        plt.savefig(savefig_path, **savefig_kws)
+
+    return fig, axes
 

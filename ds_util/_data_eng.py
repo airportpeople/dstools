@@ -378,7 +378,7 @@ def get_interval_bins(series, bins, string_labels=True):
 
     '''
     if isinstance(bins, int):
-        a = pd.qcut(series, bins)
+        a = pd.qcut(series, bins, duplicates='drop')
 
         if string_labels:
             a = a.astype(str).str.strip('()[]').str.replace(',', ' -')
