@@ -9,7 +9,7 @@ from sklearn.metrics import confusion_matrix, auc, roc_curve, r2_score, mean_abs
 from scipy import interp
 from itertools import cycle
 from ._alt_metrics import *
-from ds_statsml import smooth
+from ._stattools import smooth
 
 
 def abline(slope, intercept, color, axis=None):
