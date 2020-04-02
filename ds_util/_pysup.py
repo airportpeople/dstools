@@ -3,7 +3,7 @@ import sys
 import re
 import string
 import pandas as pd
-import numpy as np
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import KFold
 from collections import Counter
 from itertools import chain, combinations
@@ -240,3 +240,11 @@ def make_append_file(filepath=None, first_line="", add_line='', break_lines=True
 
     with open(filepath, "a") as f:
         f.write(br + add_line)
+
+def priorities_to_weights(priorities):
+    scaler = MinMaxScaler()
+    priorities = np.array(priorities)
+    priorities = np.reshape(priorities, (-1, 1))
+    weights = 2 - scaler.fit_transform(priorities, (-1, 1))
+    weights = weights / weights.sum()
+    return weights

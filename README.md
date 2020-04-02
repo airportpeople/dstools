@@ -37,3 +37,6 @@ To remove a kernel `jupyter kernelspec remove <myenv>`.
 ## Remote Connecting
 Windows: `nslookup` to find IP address and computer name, Unix `ifconfig`
 
+## Managing package versioning
+Essentially have a working branch and a master branch. Do all your work in the working branch, and then do pull requests from the master branch when you have a working version. Then you can use the normal MAJORUPDATE.MINORUPDATE.PATCH convention.
+
