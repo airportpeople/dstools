@@ -381,7 +381,8 @@ def get_interval_bins(series, bins, string_labels=True):
         a = pd.qcut(series, bins, duplicates='drop')
 
         if string_labels:
-            a = a.astype(str).str.strip('()[]').str.replace(',', ' -')
+            labels = [f'{x.left} - {x.right}' for x in sorted(a.cat.categories)]
+            a = pd.qcut(series, bins, duplicates='drop', labels=labels)
 
         return a
 
