@@ -241,6 +241,7 @@ def make_append_file(filepath=None, first_line="", add_line='', break_lines=True
     with open(filepath, "a") as f:
         f.write(br + add_line)
 
+
 def priorities_to_weights(priorities):
     scaler = MinMaxScaler()
     priorities = np.array(priorities)
