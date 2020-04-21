@@ -19,7 +19,7 @@
 - **Install Snowflake on a separate environment**
 - [Always use conda install when possible](https://www.anaconda.com/using-pip-in-a-conda-environment/)
 - Don't forget [this](http://scipy-lectures.org/intro/language/reusing_code.html) article! Remember **Put everything in functions in modules, THEN call those functions in a script. KEEP FUNCTIONS AS LOW LEVEL AS POSSIBLE.**
-- Remove pyc files from tracking if you need to with `git rm --cached *.pyc` or `find . -name '*.pyc' | xargs -n 1 git rm --cached` for recursive. (`*.pyc` should be in the .gitignore anyway.)
+- Remove pyc files from tracking if you need to with `git rm --cached *.pyc` or `find . -name '*.pyc' | xargs -n 1 git rm --cached *.pyc` for recursive. (`*.pyc` should be in the .gitignore anyway.)
 
 ## Set up new (conda) environment
 
