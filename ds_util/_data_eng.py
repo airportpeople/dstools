@@ -399,3 +399,61 @@ def get_interval_bins(series, bins, string_labels=True):
 
     else:
         raise AttributeError("`bins` must be an integer or array.")
+
+
+def fill_by_neighbors(distances, indices, df, distance_lenience=0.9, axis=1):
+    '''
+
+    Parameters
+    ----------
+    distances : np.array
+        (Output of NearestNeighbors.kneighbors[0]) Basically a list of lists. The j-th item in the i-th list
+        represents the distance between the i-th item (index) in df and the indices[i][j]-th item in df.
+
+    indices : np.array
+        (Output of NearestNeighbors.kneighbors[1]) List of lists. The
+
+    df : pd.DataFrame
+        The index of this DataFrame must be the *same* as the index of the DataFrame passed into NearestNeighbors.
+
+    distance_lenience : float
+        Between 0 and 1 (inclusive). Essentially the quantile of distances that you want to accept when filling
+        missing values.
+
+    axis : int
+        Which axis matters when comparing original and filled values. Basically, what axis represents the
+        features of an entity. Traditionally this will be 1 where each row is an entity.
+
+    Returns
+    -------
+
+    '''
+    # First get a DataFrame where the index is shared with the DataFrame passed into NearestNeighbors
+    df_neighbors = pd.DataFrame(index=df.index, data=indices)
+
+    max_distance = distances.max()
+    max_distance_allowed = np.quantile(distances, distance_lenience)
+    print(f"Maximum distance between points: {round(max_distance)}")
+    print(f"Maximum distance allowed (below {distance_lenience * 100}% quantile): {round(max_distance_allowed)}")
+
+    for neighbor in range(indices.shape[1]):
+        df_filler = df.copy()
+        df_filler = df_filler.loc[df_neighbors[neighbor]]
+        df_filler.index = df.index
+        df_filler.iloc[distances[:, neighbor] > max_distance_allowed] = np.nan
+        df_ = df.fillna(df_filler)
+
+        mean_perc_diff = np.mean(np.abs(df_.median(axis=axis) - df.median(axis=axis)) / df.median(axis=axis))
+        mean_perc_diff = round(mean_perc_diff * 100, 1)
+
+        print(f"Neighbor {neighbor + 1}: MAPE between last & filled axis-{axis} medians: {mean_perc_diff}%")
+
+        df = df_
+
+        perc_full = (~df.isna()).sum().sum() / \
+                    (df.shape[0] * df.shape[1])
+        perc_full = np.round(perc_full * 100, 2)
+
+        print(f"Neighbor {neighbor + 1}: Matrix integrity = {perc_full}% full")
+
+    return df
