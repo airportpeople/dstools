@@ -6,7 +6,7 @@ from sklearn.linear_model import lars_path, LinearRegression
 from sklearn.preprocessing import scale, label_binarize, MinMaxScaler
 from sklearn.metrics import confusion_matrix, auc, roc_curve, r2_score, mean_absolute_error, median_absolute_error, recall_score, \
     average_precision_score, f1_score, accuracy_score
-from scipy import interp
+from numpy import interp
 from itertools import cycle
 from ._alt_metrics import *
 from ._stattools import smooth
