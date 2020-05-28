@@ -21,7 +21,7 @@ import seaborn as sns
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
 import plotly.express as px
-%matplotlib inline
+# %matplotlib inline
 
 from pandas.plotting import register_matplotlib_converters
 register_matplotlib_converters()
