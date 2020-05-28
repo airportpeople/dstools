@@ -16,7 +16,7 @@ try:
 except:
     pass
 
-from ds_statsml._alt_metrics import *
+from dstools.ds_statsml._alt_metrics import *
 from time import time
 
 
