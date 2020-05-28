@@ -2,6 +2,7 @@ import os
 import re
 import pandas as pd
 import numpy as np
+import scipy.stats as stats
 from multiprocessing import Pool, current_process
 from datetime import datetime
 
@@ -457,3 +458,22 @@ def fill_by_neighbors(distances, indices, df, distance_lenience=0.9, axis=1):
         print(f"Neighbor {neighbor + 1}: Matrix integrity = {perc_full}% full")
 
     return df
+
+
+def get_qbins(values, quantiles):
+    if isinstance(quantiles, int):
+        return pd.qcut(values, quantiles, labels=range(1, quantiles + 1))
+
+    else:
+        quantiles = [0] + quantiles + [1]
+        return pd.qcut(values, quantiles, labels=False, duplicates='drop') + 1
+
+
+def get_dist_quantiles(n_quantiles, stats_dist=stats.norm):
+    z_min = stats_dist.ppf(1 / n_quantiles)
+    z_max = stats_dist.ppf(1 - 1 / n_quantiles)
+
+    z_scores = np.linspace(z_min, z_max, n_quantiles - 1)
+    quantiles = [stats_dist.cdf(z) for z in z_scores]
+
+    return quantiles

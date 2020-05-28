@@ -4,13 +4,14 @@
 
 1. Install [Anaconda](https://www.anaconda.com/distribution/#macos)
 2. Run `conda update --all`
-3. Consider the following packages: uszipcode, tensorflow
+3. Consider the following packages: uszipcode, tensorflow, pandasql
 4. Connect project(s) to GitHub!
 
 ### (For Plotly)
-1. Install Node with `conda install -c conda-forge nodejs`
-2. Install [Plotly](https://plot.ly/python/getting-started/#installation), and do [Jupyterlab extensions](https://plot.ly/python/getting-started/#jupyterlab-support-python-35) (install nodejs first)
-3. Install orca with `conda install -c plotly plotly-orca` (for exporting static images of plots)
+1. Install [Plotly](https://plot.ly/python/getting-started/#installation).
+2. [Install Node package](https://nodejs.org/en/) and then conda install with `conda install nodejs` (not conda-forge)
+3. Install the necessary [Jupyterlab extensions](https://plot.ly/python/getting-started/#jupyterlab-support-python-35)
+4. Scroll down for the instructions to conda install packages needed for **Static Image Export** (i.e., orca) and **Extended Geo Support** (i.e., plotly-geo)
 
 ## Recommendations
 
