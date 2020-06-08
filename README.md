@@ -6,6 +6,7 @@
 2. Run `conda update --all`
 3. Consider the following packages: uszipcode, tensorflow, pandasql
 4. Connect project(s) to GitHub!
+5. Download draw.io!! It'll be grand.
 
 ### (For Plotly)
 1. Install [Plotly](https://plot.ly/python/getting-started/#installation).
