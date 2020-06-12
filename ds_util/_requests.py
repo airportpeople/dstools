@@ -10,7 +10,7 @@ def request_to_data(request, return_json=False):
     if not return_json:
         try:
             result = pd.read_json(request.json()['data'])  # From LTJDS API
-        except TypeError or JSONDecodeError:
+        except (TypeError, JSONDecodeError) as e:
             result = pd.DataFrame(request.json())
 
     else:
