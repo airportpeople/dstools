@@ -28,6 +28,7 @@
 1. First, connect your project to a GitHub repo for VCS and code backup
 2. Use the syntax `conda create -n <myenv> python=3.7 scipy=0.15.0 astroid babel`
 3. Activate the environment `conda activate <myenv>`
+    - Note, in **Windows**, if you lose the anaconda prompt, you can activate anaconda with `call C:\anaconda3\Scripts\activate.bat`.
 4. Run `conda install ipykernel`
 5. Then `ipython kernel install --user --name=<myenv>`
 6. Then `conda deactivate` and it should be in there
