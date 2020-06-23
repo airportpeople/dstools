@@ -249,3 +249,19 @@ def priorities_to_weights(priorities):
     weights = 2 - scaler.fit_transform(priorities, (-1, 1))
     weights = weights / weights.sum()
     return weights
+
+
+def get_jupyter_vars(include_ipython=False):
+    if include_ipython:
+        ipython_vars = []
+    else:
+        # These are the usual ipython objects, including this one you are creating
+        ipython_vars = ['In', 'Out', 'exit', 'quit', 'get_ipython', 'ipython_vars']
+
+    # Get a sorted list of the objects and their sizes
+    variables = {x: sys.getsizeof(globals().get(x)) for x in dir()
+                 if not x.startswith('_')
+                 and x not in sys.modules
+                 and x not in ipython_vars}
+
+    return pd.Series(variables)
