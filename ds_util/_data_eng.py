@@ -12,11 +12,13 @@ table_names = []
 num_subtables = []
 
 
-def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklprotocol=-1, maxrows=1e6, csv_params=None, csv=False,
+def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklprotocol=-1, maxrows=1e6,
+            csv_params=None, csv=False,
             overwrite=False):
     '''
-    Save a large dataframe as multiple files based on the maximum number of rows, by groups, or the maximum (in buffer) dataframe size.
-    
+    Save a large dataframe as multiple files based on the maximum number of rows, by groups, or the maximum (in
+    buffer) dataframe size.
+
     Parameters
     ----------
     df : pd.DataFrame
@@ -40,7 +42,7 @@ def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklp
     csv : bool, (optional, default: False)
         Whether you'd like to save as csv files (True) or pickle files (False)
     overwrite : bool, (optional, default: False)
-        If you'd like to overwrite data that is already in the directory, 
+        If you'd like to overwrite data that is already in the directory,
         or save different files with time stamp as a suffix for each file.
     Returns
     -------
@@ -81,7 +83,7 @@ def df_dump(df, savedir, by_group=None, dfname='df', maxsize=1.5e9, axis=0, pklp
 
     if by_group is not None:
         for i, group in enumerate(df[by_group].unique()):
-            print(f'({i+1} of {df[by_group].nunique()}) Saving data from {by_group} {group} to {savedir} ...')
+            print(f'({i + 1} of {df[by_group].nunique()}) Saving data from {by_group} {group} to {savedir} ...')
             save(df[df[by_group] == group], f'{savedir}/{str(group)}')
 
         return None
@@ -140,20 +142,25 @@ def df_load(savedir, keep_filename=False, len_prefix=None, len_suffix=4, filenam
             reset_index=True, csv_params=None, re_pat=".*", n_jobs=1, concat_sort=None):
     '''
     Load multiple files into a Pandas DataFrame (possibly saved using `df_dump`, but not necessarily).
-    
+
     Parameters
     ----------
     savedir : str
-        The filepath with the files (only those files) containing the data. Each file should have the *same* columns and the *same* file type. There
+        The filepath with the files (only those files) containing the data. Each file should have the *same* columns
+        and the *same* file type. There
         should be no other kinds of file inside the `savedir`.
     keep_filename : bool
-        Whether to keep the filename as a column in the data (handy if the files are saved as dates, or something like that).
+        Whether to keep the filename as a column in the data (handy if the files are saved as dates, or something
+        like that).
     len_prefix : int
-        If `keep_filename == True`, then for each filename (after the last '/' in the file path) this is the number of unwanted characters at the
+        If `keep_filename == True`, then for each filename (after the last '/' in the file path) this is the number
+        of unwanted characters at the
         beginning of the file name. If you want all of the filename, you can just leave this as None.
     len_suffix : int
-        If `keep_filename == True`, then for each filename (after the last '/' in the file path) this is the number of unwanted characters at the
-        end of the file name (including the '.csv' or '.pkl', etc.). If you want all of the filename, you can just leave this as 4.
+        If `keep_filename == True`, then for each filename (after the last '/' in the file path) this is the number
+        of unwanted characters at the
+        end of the file name (including the '.csv' or '.pkl', etc.). If you want all of the filename, you can just
+        leave this as 4.
     filename_column : str
         If `keep_filename == True`, then this is the name of the column where you want to put the filenames.
     axis : int, in {0, 1}
@@ -362,22 +369,38 @@ def get_intact_columns(df, max_perc_missing=0.25):
     return column_perc_missing[column_perc_missing <= max_perc_missing].index.tolist()
 
 
-def get_interval_bins(series, bins, string_labels=True):
+def get_interval_bins(series, bins, string_labels=True, cap_extent=False):
     '''
+    Given a series of values, calculate the bins, and label them in a convenient way, or leave them as categories.
 
     Parameters
     ----------
-    series
+    series : pd.Series, array-like
+        The array of *numerical* values
+
     bins : int, list
         If int, use qcut for approximately equally sized bins (i.e., about the same number of items in each bin)
-        If list, do not include the minimum or maximum. These are the "cuts" inbetween. So,
-            bins = [5, 10, 15]  -->  [a.min(), 5), [5, 10), [10, 15), [15, a.max() + 1)
+
+        If list, determine the counts of values within those bins
+
     string_labels : bool
+        Whether or not to use the categorical Interval values (False) or self-calculated string values (e.g., 1 - 5).
+
+    cap_extent : bool
+        If True, return bins such that the minimum/maximum values of the series are captured as the end caps of the
+        bin intervals. E.g., bins = [5, 10, 15]  -->  [a.min(), 5), [5, 10), [10, 15), [15, a.max() + 1).
+
+        If False, return bins so that all the values given match, and if there is a value larger or smaller than the
+        bounds, re-label. E.g., bins = [5, 10, 15]  -->  ['Below 5', [5, 10), [10, 15), 'Above 15')
+
+        When this and string_labels are False, pandas will automatically cap extents for Interval labels.
 
     Returns
     -------
-
+    (pd.Series) A pandas category series with bins as requested.
     '''
+    series = pd.Series(series)
+
     if isinstance(bins, int):
         a = pd.qcut(series, bins, duplicates='drop')
 
@@ -388,12 +411,33 @@ def get_interval_bins(series, bins, string_labels=True):
         return a
 
     elif isinstance(bins, list):
-        bins = [b for b in bins if series.min() < b < series.max()]
-        bins = [series.min()] + bins + [series.max() + 1]
+        bins = sorted(bins)
 
-        if string_labels:
-            labels = [str(bins[i]) + ' - ' + str(bins[i + 1]) for i in range(len(bins) - 1)]
-        else:
+        if cap_extent:
+            bins = [b for b in bins if series.min() < b < series.max()]
+
+        labels = [str(bins[i]) + ' - ' + str(bins[i + 1]) for i in range(len(bins) - 1)]
+
+        series_min = series.min()
+        series_max = series.max()
+
+        if series_min < min(bins):
+            if cap_extent:
+                labels.insert(0, f"{series_min} - {bins[0]}")
+            else:
+                labels.insert(0, f'Below {bins[0]}')
+
+            bins.insert(0, series_min)
+
+        if series_max > max(bins):
+            if cap_extent:
+                labels.append(f'{bins[-1]} - {series_max}')
+            else:
+                labels.append(f'Above {bins[-1]}')
+
+            bins.append(series_max + 1)
+
+        if not string_labels:
             labels = None
 
         return pd.cut(series, bins=bins, labels=labels, right=False)
