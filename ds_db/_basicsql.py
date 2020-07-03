@@ -1,9 +1,11 @@
 import urllib
 import pyodbc
-import os
 import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine
+from ..ds_util import glob_re
+
+pyodbc.pooling = False
 
 
 class SQLConnection(object):
@@ -82,6 +84,9 @@ class SQLConnection(object):
             # If no strings at all in the data frame
             df.replace([np.nan], [None], inplace=True)
 
+        if to_sql_kws is None:
+            to_sql_kws = {}
+
         # Limit chunk size for SQL server ...
         if 'chunksize' in to_sql_kws.keys() and ('SQL Server' in self.driver or 'ODBC' in self.driver):
             df_num_of_cols = len(df.columns)
@@ -95,7 +100,23 @@ class SQLConnection(object):
         if read_sql_kws is None:
             read_sql_kws = {}
 
-        df = pd.read_sql_query(query, self.connection, **read_sql_kws)
+        if 'chunksize' in read_sql_kws.keys():
+            with self.connection as connection:
+                df = pd.read_sql_query(query, connection, **read_sql_kws)
+                dfs = []
+                i = 0
+                for df_ in df:
+                    i += 1
+                    print(f"Loading chunk {i} from SQL ...")
+                    dfs.append(df_)
+
+            print("Concatenating chunks ...")
+            df = pd.concat(dfs)
+
+        else:
+            with self.connection as connection:
+                df = pd.read_sql_query(query, connection, **read_sql_kws)
+
         return df
 
     def execute(self, sql_script):
@@ -125,19 +146,19 @@ class SQLConnection(object):
                               (self.df_schema.column_name.str.lower().str.contains(in_column_name.lower()))]
 
     def upload_folder(self, folder_path, target_table=None, schema='dbo', csv=True, preprocess_func=None,
-                      read_csv_kws=None, to_sql_kws=None, sort_columns=True):
+                      read_csv_kws=None, to_sql_kws=None, sort_columns=True, filepattern='.*'):
         if target_table is None:
             target_table = folder_path[folder_path.rfind('/') + 1:]
 
-        files = os.listdir(folder_path)
+        files = glob_re(filepattern, folder_path)
 
         for i, file in enumerate(files):
             if csv:
                 if read_csv_kws is None:
                     read_csv_kws = {}
-                df = pd.read_csv(folder_path + '/' + file, **read_csv_kws)
+                df = pd.read_csv(file, **read_csv_kws)
             else:
-                df = pd.read_pickle(folder_path + '/' + file)
+                df = pd.read_pickle(file)
 
             if sort_columns:
                 df.sort_index(axis=1, inplace=True)
@@ -145,6 +166,3 @@ class SQLConnection(object):
             print(f"[{i + 1} of {len(files)}] Appending {file} to {target_table} ...")
             self.upload_df(df, target_table, schema=schema, if_table_exists='append', to_sql_kws=to_sql_kws,
                            preprocess_func=preprocess_func)
-
-    def __del__(self):
-        self.connection.close()
