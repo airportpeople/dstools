@@ -1,9 +1,9 @@
-from ds_util._segment import Slicer
+from ..ds_util import Slicer
 import numpy as np
 import scipy.stats as stats
 import pandas as pd
 from sklearn.neighbors import KNeighborsClassifier, NearestNeighbors
-from sklearn.decomposition import PCA
+from sklearn.decomposition import IncrementalPCA
 from sklearn.preprocessing import MinMaxScaler
 
 
@@ -258,7 +258,7 @@ class PeriodicRank(object):
                            max_sample_frac=0.75,
                            scale_min=1,
                            scale_max=10,
-                           exp_lambda=1,
+                           exp_lambda=0.5,
                            today=None):
 
         df_hist.loc[:, event_time] = pd.to_datetime(df_hist[event_time])
@@ -345,7 +345,8 @@ class PeriodicRank(object):
 
         print(f"Reducing {df_sim_.shape[1]} dimensions ...")
         if pca_model is None:
-            pca_model = PCA()
+            pca_model = IncrementalPCA(copy=False,
+                                       batch_size=int(np.sqrt(df_sim_.shape[1])))
             X_sim = pca_model.fit_transform(df_sim_.values)
         else:
             X_sim = pca_model.transform(df_sim_.values)
@@ -580,7 +581,6 @@ class PeriodicRank(object):
         df_sched_expected_ = self._get_expected_values(df_prob_, df_segment_means)
 
         self.df_sched_expected = df_sched_expected_
-        # Save these daily
 
     def _fit_knn(self, df, knn_kws=None, use_means=False):
         '''
@@ -620,11 +620,16 @@ class PeriodicRank(object):
 
     @staticmethod
     def get_second_best(a):
+        '''
+        In this case, "second best" in a list containing a single value *is* that single value.
+        '''
         series = pd.Series(a)
         series = series.drop_duplicates().dropna().sort_values(ascending=False)
 
-        if len(series) < 2:
+        if len(series) < 1:
             return np.nan
+        elif len(series) < 2:
+            return series[0]
         else:
             return series[1]
 
@@ -667,10 +672,14 @@ class PeriodicRank(object):
         return df
 
     def predict(self, df, time_period, ids, return_all=False):
-        # TODO: Speed this up ... consider using .loc[<list of indices>, <other_list_of_indices>]
         df = self._predict_segments(df)
 
         df_ = df[ids + ['segment', time_period]].drop_duplicates().copy()
+
+        # For new time periods that haven't been seen, fill with NA
+        for t in df[time_period].unique():
+            if t not in self.df_sched_expected.columns:
+                self.df_sched_expected[t] = np.nan
 
         df_['expected_today'] = df_.apply(lambda r: self.df_sched_expected.loc[r['segment'],
                                                                                r[time_period]], axis=1)
@@ -689,7 +698,6 @@ class PeriodicRank(object):
 
         df_.sort_values('ranking_value', ascending=False, ignore_index=True, inplace=True)
 
-        # TODO: Random sample this list to (eventually) fill in those missing values
         df_['rank'] = df_.index.where((~df_['ranking_value'].isna()), other=np.nan) + 1
 
         if return_all:
@@ -705,6 +713,30 @@ class PeriodicRank(object):
         self.df_segments.to_pickle(f'{path}/df_segments_{today}.pkl')
         self.df_sched_expected.to_pickle(f'{path}/df_sched_expected_{today}.pkl')
 
+    @staticmethod
+    def update_weighted_average(segment_means_all, segment_means_update,
+                                segment_counts_all, segment_counts_update,
+                                new_data_weight=1):
+
+        segment_data = pd.DataFrame({'all_means': segment_means_all,
+                                     'update_means': segment_means_update})
+
+        segment_data['all_counts'] = segment_counts_all
+        segment_data['update_counts'] = segment_counts_update
+
+        segment_means = segment_data[['all_means', 'update_means']].copy()
+        segment_counts = segment_data[['all_counts', 'update_counts']].copy()
+
+        segment_means = segment_means.fillna(method='ffill', axis=1).fillna(method='bfill', axis=1)
+        segment_counts = segment_counts.fillna(0)
+        segment_counts[segment_counts.sum(axis=1) < 1] = 1
+
+        segment_counts.loc[:, 'update_counts'] = segment_counts['update_counts'] * new_data_weight
+
+        weighted_average = np.average(segment_means, axis=1, weights=segment_counts)
+
+        return pd.Series(data=weighted_average, index=segment_data.index)
+
     def update(self,
                df_hist,
                event_time,
@@ -718,7 +750,9 @@ class PeriodicRank(object):
                knn_kws=None,
                time_period_drift_len=5,
                behavior_neighborhood=5,
-               segment_neighborhood=5):
+               segment_neighborhood=5,
+               new_data_weight=1):
+
         if defaults is None:
             self._get_default_sim_values(df_hist)
         else:
@@ -752,9 +786,14 @@ class PeriodicRank(object):
 
         df_segment_means_all = self._get_segment_means(df_hist_, best_target_predictor)
         df_segment_means_sample = self._get_segment_means(df_update, best_target_predictor)
+        df_segment_counts_all = df_hist_.groupby('segment')[self.target_value].count()
+        df_segment_counts_sample = df_update.groupby('segment')[self.target_value].count()
 
-        # df_segment_means = ((df_segment_means_all * df_segment_means_sample) / 2).fillna(df_segment_means_all)
-        df_segment_means = df_segment_means_sample.combine_first(df_segment_means_all)
+        df_segment_means = self.update_weighted_average(df_segment_means_all,
+                                                        df_segment_means_sample,
+                                                        df_segment_counts_all,
+                                                        df_segment_counts_sample,
+                                                        new_data_weight)
 
         df_sched_expected_ = self._get_expected_values(df_prob_, df_segment_means)
 
