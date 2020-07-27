@@ -3,6 +3,7 @@
 
 # Protected
 .DS_Store/
+.idea
 *.zip
 *.csv
 *.pkl
@@ -16,7 +17,6 @@
 *.jpeg
 *.html
 *.iml
-.idea/
 data/
 tblogs/
 *.DS_Store
